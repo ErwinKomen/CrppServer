@@ -1,0 +1,11 @@
+<#if licenseFirst??>
+${licenseFirst}
+</#if>
+${licensePrefix}This software has been developed at the "Meertens Instituut"
+${licensePrefix}   for the CLARIN project "CorpusStudio-WebApplication".
+${licensePrefix} The application is based on the "CorpusStudio" program written by Erwin R. Komen
+${licensePrefix}   while working for the Radboud University Nijmegen.
+${licensePrefix} The program and the source can be freely used and re-distributed.
+<#if licenseLast??>
+${licenseLast}
+</#if>
