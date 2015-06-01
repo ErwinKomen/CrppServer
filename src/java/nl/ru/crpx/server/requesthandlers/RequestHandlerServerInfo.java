@@ -39,7 +39,7 @@ public class RequestHandlerServerInfo extends RequestHandler {
     // Prepare a status object to return
     DataObjectMapElement objStatus = new DataObjectMapElement();
     objStatus.put("code", "completed");
-    objStatus.put("message", "Server information follows");
+    objStatus.put("message", "See the 'indices' information in @indices");
     objStatus.put("userid", userId);
     // Prepare the total response: indexName + status object
     DataObjectMapElement response = new DataObjectMapElement();

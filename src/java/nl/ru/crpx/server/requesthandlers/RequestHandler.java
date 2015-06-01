@@ -275,7 +275,11 @@ public abstract class RequestHandler {
    * @return the unique session id
    */
   public String shortUserId() {
-    return getUserId().substring(0, 6);
+    String sId = getUserId();
+    if (sId.length()<6) 
+      return sId;
+    else
+      return sId.substring(0, 6);
   }
   /**
    * Child classes should override this to handle the request.
