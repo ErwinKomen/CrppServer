@@ -9,7 +9,6 @@ import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.server.CrpPserver;
-import static nl.ru.crpx.server.requesthandlers.RequestHandler.userId;
 import org.apache.log4j.Logger;
 
 /**
@@ -22,8 +21,8 @@ public class RequestHandlerStatusXq  extends RequestHandler {
   @SuppressWarnings("hiding")
   private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
 
-  public RequestHandlerStatusXq(CrpPserver servlet, HttpServletRequest request, String indexName, String urlResource) {
-    super(servlet, request, indexName, urlResource);
+  public RequestHandlerStatusXq(CrpPserver servlet, HttpServletRequest request, String indexName) {
+    super(servlet, request, indexName);
   }
   
   @Override

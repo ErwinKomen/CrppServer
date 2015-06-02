@@ -22,8 +22,8 @@ public class RequestHandlerDebug extends RequestHandler {
   @SuppressWarnings("hiding")
   private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
 
-  public RequestHandlerDebug(CrpPserver servlet, HttpServletRequest request, String indexName, String urlResource) {
-    super(servlet, request, indexName, urlResource);
+  public RequestHandlerDebug(CrpPserver servlet, HttpServletRequest request, String indexName) {
+    super(servlet, request, indexName);
   }
   
   @Override

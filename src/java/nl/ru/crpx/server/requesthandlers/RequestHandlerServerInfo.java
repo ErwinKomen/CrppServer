@@ -23,8 +23,8 @@ public class RequestHandlerServerInfo extends RequestHandler {
   @SuppressWarnings("hiding")
   private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
 
-  public RequestHandlerServerInfo(CrpPserver servlet, HttpServletRequest request, String indexName, String urlResource) {
-    super(servlet, request, indexName, urlResource);
+  public RequestHandlerServerInfo(CrpPserver servlet, HttpServletRequest request, String indexName) {
+    super(servlet, request, indexName);
   }
   
   @Override

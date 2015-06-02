@@ -45,7 +45,8 @@ public abstract class RequestHandler {
     availableHandlers = new HashMap<String, Class<? extends RequestHandler>>();
     availableHandlers.put("debug", RequestHandlerDebug.class);
   }
-  static String userId = "undefined user id";   // Default user id
+  String userId = "undefined user id";          // Default user id
+  String sCurrentUserId = "";                   // Local copy of userid
   static String lastIP = "";                    /** IP address of last request */
   static String sProjectBase = "/etc/project/"; // Base directory where user-spaces are stored
   static String sCorpusBase = "/etc/corpora/";  // Base directory where corpora are stored
@@ -53,26 +54,25 @@ public abstract class RequestHandler {
   String sReqArgument = "";     // Request arguments
   String sLastReqArg = "";      // Arguments of last request
   String sCrpFile = "";         // Full path of the CRP file we are handling
-  String strProject;            /** The name of the project */
-  String indexName;             /** The language index */
-  String urlResource;           /** the command */
+  String strProject;            // The name of the project 
+  String indexName;             // The query specification
   File indexDir;                // Pointer to the input directory
-  SearchParameters searchParam; /** Search parameters from request */
-  SearchManager searchMan;      /** The search manager, which executes and caches our searches */
-  CrpPserver servlet;           /** The servlet */
-  HttpServletRequest request;   /** The HTTP request object */
-  CorpusResearchProject prjThis;/** The corpus research project we are processing */
+  SearchParameters searchParam; // Search parameters from request 
+  SearchManager searchMan;      // The search manager, which executes and caches our searches 
+  CrpPserver servlet;           // The servlet 
+  HttpServletRequest request;   // The HTTP request object 
+  CorpusResearchProject prjThis;// The corpus research project we are processing 
   // ============== Class initiator ============================================
-  RequestHandler(CrpPserver servlet, HttpServletRequest request, String indexName, String urlResource) {
+  RequestHandler(CrpPserver servlet, HttpServletRequest request, String indexName) {
     try {
       // Get the current user/session ID from the system
+      // NOTE: this gets the executing user on the server, so is of little use
       this.userId = System.getProperty("user.name");
       // Take over the calling servlet
       this.servlet = servlet;
       this.request  = request;
       // Take over the index name
       this.indexName = indexName;
-      this.urlResource = urlResource;
       this.indexDir  = null;
       // Get the search manager from the calling CrpxProcessor
       this.searchMan = servlet.getSearchManager();
@@ -98,14 +98,14 @@ public abstract class RequestHandler {
    History:
    7/nov/2014   ERK Created
    --------------------------------------------------------------------------- */
-  public boolean initCrp(String sProjectPath) {
+  public boolean initCrp(String sProjectPath, String sLngIndex) {
     String sInputDir;   // Input directory for this project
     String sOutputDir;  // Output directory for this project
     String sQueryDir;   // Query directory for this project
 
     try {
       // Get the correct input directory from the [indexName] part
-      this.indexDir = servlet.getSearchManager().getIndexDir(indexName);
+      this.indexDir = servlet.getSearchManager().getIndexDir(sLngIndex);
       // Create room for a corpus research project
       CorpusResearchProject crpThis = new CorpusResearchProject();
       // Set output and query directory, depending on the user
@@ -150,6 +150,7 @@ public abstract class RequestHandler {
     }
   }
   
+  
   /**
    * Handle a request by dispatching it to the corresponding subclass.
    *
@@ -162,76 +163,63 @@ public abstract class RequestHandler {
     try {
       // Initialize the userId as something from the HttpSession
       // (Note: subsequent code may get a better userId from the request object)
-      userId = request.getSession().getId();
+      // setUserId(request.getSession().getId());
+      // userId = request.getSession().getId();
 
-    // Parse the URL
-    String servletPath = request.getServletPath();
-    if (servletPath == null)
-      servletPath = "";
-    if (servletPath.startsWith("/"))
-      servletPath = servletPath.substring(1);
-    if (servletPath.endsWith("/"))
-      servletPath = servletPath.substring(0, servletPath.length() - 1);
-    String[] parts = servletPath.split("/", 3);
-    // The 'indexName' is a combination of: language [subdir [subdir [... [filename ] ] ] ]
-    //     the sub directories need to be separated by the ; (semicolon)
-    String indexName = parts.length >= 1 ? parts[0] : "";
-    // The 'urlResource' part is the actual commend, e.g: exe, statusxq etc
-    String urlResource = parts.length >= 2 ? parts[1] : "";
-    String urlPathInfo = parts.length >= 3 ? parts[2] : "";
+      // Parse the URL
+      String servletPath = request.getServletPath();
+      if (servletPath == null)
+        servletPath = "";
+      if (servletPath.startsWith("/"))
+        servletPath = servletPath.substring(1);
+      if (servletPath.endsWith("/"))
+        servletPath = servletPath.substring(0, servletPath.length() - 1);
+      String[] parts = servletPath.split("/", 3);
+      // The 'indexName' is a combination of: language [subdir [subdir [... [filename ] ] ] ]
+      //     the sub directories need to be separated by the ; (semicolon)
+      String indexName = parts.length >= 1 ? parts[0] : "";
+      // The 'urlResource' part is the actual commend, e.g: exe, statusxq etc
+      String urlResource = parts.length >= 2 ? parts[1] : "";
+      String urlPathInfo = parts.length >= 3 ? parts[2] : "";
 
-    // Debugging: show the IP + time (EK: but only if this is no repetition)
-    String thisIP = request.getRemoteAddr();
-    if (!thisIP.equals(lastIP)) {
-      lastIP = thisIP;
-      errHandle.debug("IP: " + thisIP + " at: " + getCurrentTimeStamp());
-    }
+      // Debugging: show the IP + time (EK: but only if this is no repetition)
+      String thisIP = request.getRemoteAddr();
+      if (!thisIP.equals(lastIP)) {
+        lastIP = thisIP;
+        errHandle.debug("IP: " + thisIP + " at: " + getCurrentTimeStamp());
+      }
 
-    // Choose the RequestHandler subclass
-    RequestHandler requestHandler = null;
-    switch (indexName) {
-      case "debug":
-        requestHandler = new RequestHandlerDebug(servlet, request, indexName, urlResource);
-        break;
-      case "show":
-        requestHandler = new RequestHandlerShow(servlet, request, indexName, urlResource);
-        break;
-      case "":
-        // Empty index name means request for information
-        requestHandler = new RequestHandlerServerInfo(servlet, request, indexName, urlResource);
-        break;
-      default:
-        // Default handler: expect a language
-        if (urlResource.length() == 0) {
-          // Give appropriate error message
-          return DataObject.errorObject("INTERNAL_ERROR", "RequestHandler is empty. Use: /execute, /show");
-        } else {
-          // Action depends on the [urlResource] part
-          switch (urlResource.toLowerCase()) {
-            case "execute":
-              requestHandler = new RequestHandlerExecute(servlet, request, indexName, urlResource);
-              break;
-            case "statusxq":
-              requestHandler = new RequestHandlerStatusXq(servlet, request, indexName, urlResource);
-              break;
-            default:
-              // This handler is not known
-              break;
-          }
-        }
-        break;
-    }
+      // Choose the RequestHandler subclass
+      RequestHandler requestHandler = null;
+      switch (indexName) {
+        case "debug":
+          requestHandler = new RequestHandlerDebug(servlet, request, indexName);
+          break;
+        case "show":
+          requestHandler = new RequestHandlerShow(servlet, request, indexName);
+          break;
+        case "execute": case "exe":
+          requestHandler = new RequestHandlerExecute(servlet, request, indexName);
+          break;
+        case "statusxq":
+          requestHandler = new RequestHandlerStatusXq(servlet, request, indexName);
+          break;
+        case "":
+          // Empty index name means request for information
+          requestHandler = new RequestHandlerServerInfo(servlet, request, indexName);
+          break;
+      }
 
-    // Make sure we catch empty requesthandlers
-    if (requestHandler == null)
-      return DataObject.errorObject("INTERNAL_ERROR", "RequestHandler is empty. Use: /execute, /show");
+      // Make sure we catch empty requesthandlers
+      if (requestHandler == null)
+        return DataObject.errorObject("INTERNAL_ERROR", "RequestHandler is empty. Use: /execute, /show, /statusxq");
 
-    // Handle the request
-    try {
-      return requestHandler.handle();
-    } catch (InterruptedException e) {
-      return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, false, 8));
-    }
+      // Handle the request
+      try {
+        return requestHandler.handle();
+      } catch (InterruptedException e) {
+        return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, false, 8));
+      }
       
     } catch (RuntimeException ex) {
       errHandle.DoError("Handle error", ex, RequestHandler.class);
@@ -297,7 +285,7 @@ public abstract class RequestHandler {
       return userId;
     }
   }
-
+  
   /**
    * Return the start of the user id.
    *
