@@ -2,6 +2,7 @@ package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
 import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -59,6 +60,7 @@ public abstract class RequestHandler {
   SearchParameters searchParam; /** Search parameters from request */
   SearchManager searchMan;      /** The search manager, which executes and caches our searches */
   CrpPserver servlet;           /** The servlet */
+  HttpServletRequest request;   /** The HTTP request object */
   CorpusResearchProject prjThis;/** The corpus research project we are processing */
   // ============== Class initiator ============================================
   RequestHandler(CrpPserver servlet, HttpServletRequest request, String indexName, String urlResource) {
@@ -67,6 +69,7 @@ public abstract class RequestHandler {
       this.userId = System.getProperty("user.name");
       // Take over the calling servlet
       this.servlet = servlet;
+      this.request  = request;
       // Take over the index name
       this.indexName = indexName;
       this.urlResource = urlResource;
@@ -109,6 +112,13 @@ public abstract class RequestHandler {
       sOutputDir = sProjectBase + this.userId + "/out";
       sQueryDir = sProjectBase + this.userId + "/xq";
       sInputDir = this.indexDir.getAbsolutePath();
+      // Set the project path straight
+      if (!sProjectPath.contains("/")) {
+        sProjectPath = sProjectBase + this.userId + "/" + sProjectPath;
+        if (!sProjectPath.contains(".")) {
+          sProjectPath += ".crpx";
+        }
+      }
       // Load the project
       if (!prjThis.Load(sProjectPath, sInputDir, sOutputDir, sQueryDir)) {
         errHandle.DoError("Could not load project " + strProject);
@@ -246,6 +256,27 @@ public abstract class RequestHandler {
     userId = sNewId;
   }
 
+  public static String getReqString(HttpServletRequest request) {
+    String sReqString = "";
+    try {
+      // Get the query string
+      String sQueryIdArg = request.getQueryString();
+      if (sQueryIdArg == null || sQueryIdArg.isEmpty()) {
+        // Perhaps this is a POST request? Try to get POST parameter
+        sQueryIdArg = request.getParameter("args");        
+      }
+      if (sQueryIdArg == null) {
+        sReqString = "";
+      } else {
+        sReqString = URLDecoder.decode(sQueryIdArg, "UTF-8");
+      }
+    } catch (UnsupportedEncodingException ex) {
+      errHandle.DoError("Could not get the search string", ex, RequestHandler.class);
+    }
+    // Return the result
+    return(sReqString);
+  }
+  
   /**
    * Get the correct user id.
    *

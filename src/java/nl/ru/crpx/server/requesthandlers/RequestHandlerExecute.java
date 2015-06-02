@@ -30,6 +30,19 @@ public class RequestHandlerExecute extends RequestHandler {
   @Override
   public DataObject handle() {
     debug(logger, "REQ execute");
+    // Get the project that should be loaded and executed
+    // Get the argument we need to process
+    sReqArgument = getReqString(request);
+    logger.debug("XqJob query: " + sReqArgument);
+    // Put the argument in the searchparameters
+    searchParam.put("query", sReqArgument);
+    // Try loading and initializing CRP
+    if (!initCrp(sReqArgument)) {
+      errHandle.DoError("Could not load the indicated project", null, RequestHandlerExecute.class);
+      // Or should we return an error object??
+      return null;
+    }
+    
     // Prepare a status object to return
     DataObjectMapElement objStatus = new DataObjectMapElement();
     objStatus.put("code", "completed");
