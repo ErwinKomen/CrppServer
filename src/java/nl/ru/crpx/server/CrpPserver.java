@@ -7,7 +7,9 @@
  */
 package nl.ru.crpx.server;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
@@ -67,6 +69,8 @@ public class CrpPserver extends HttpServlet  {
    --------------------------------------------------------------------------- */
   @Override
   public void init() throws ServletException {
+    InputStream is = null;  // Th config file as input stream
+    
     // Default init if no log4j.properties are found
     LogUtil.initLog4jIfNotAlready(Level.DEBUG);
     try {
@@ -76,15 +80,18 @@ public class CrpPserver extends HttpServlet  {
       super.init();
 
       // Perform initialisations related to this project-type using the config file
-      // Read it from the class path
+      // Read it from a package parent
       String configFileName = "crpp-settings.json";
-      // InputStream is = getClass().getClassLoader().getResourceAsStream();
-      InputStream is = FileIO.getProjectDirectory(CrpxProcessor.class, configFileName);
-      // InputStream is = FileUtil.getInputStream(configFileName);
+      File configFile = new File(getServletContext().getRealPath("/../../../" + configFileName));
+      // Check if it is there
+      if (configFile.exists()) {
+        // It exists, so open it up
+        is = new BufferedInputStream(new FileInputStream(configFile));
+      }
       if (is == null) {
         configFileName = "crpp-settings-default.json.txt";  // Internal default
         // is = FileUtil.getInputStream(configFileName);
-        is = FileIO.getProjectDirectory(CrpxProcessor.class, configFileName);
+        is = FileIO.getProjectDirectory(CrpPserver.class, configFileName);
         if (is == null) {
           // We cannot continue...
           errHandle.DoError("Could not find " + configFileName + "!");

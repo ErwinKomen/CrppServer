@@ -14,6 +14,7 @@ import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.search.SearchParameters;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.tools.ErrHandle;
+import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
 
@@ -78,6 +79,11 @@ public abstract class RequestHandler {
       this.searchMan = servlet.getSearchManager();
       this.searchParam = servlet.getSearchParameters(indexName);
       
+      // See if we can get alternatives for project and corpus bases
+      JSONObject oConfig = servlet.getConfig();
+      if (oConfig.has("projectBase")) sProjectBase = oConfig.getString("projectBase");
+      if (oConfig.has("corpusBase")) sCorpusBase = oConfig.getString("corpusBase");
+      
       // Initially indicate that no project has been loaded yet
       this.prjThis = null;
       /* 
@@ -109,21 +115,21 @@ public abstract class RequestHandler {
       // Create room for a corpus research project
       CorpusResearchProject crpThis = new CorpusResearchProject();
       // Set output and query directory, depending on the user
-      sOutputDir = sProjectBase + this.userId + "/out";
-      sQueryDir = sProjectBase + this.userId + "/xq";
+      sOutputDir = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/out");
+      sQueryDir = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/xq");
       sInputDir = this.indexDir.getAbsolutePath();
       // Set the project path straight
       if (!sProjectPath.contains("/")) {
-        sProjectPath = sProjectBase + this.userId + "/" + sProjectPath;
+        sProjectPath = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/" + sProjectPath);
         if (!sProjectPath.contains(".")) {
           sProjectPath += ".crpx";
         }
       }
       // Load the project
-      if (!prjThis.Load(sProjectPath, sInputDir, sOutputDir, sQueryDir)) {
+      if (!crpThis.Load(sProjectPath, sInputDir, sOutputDir, sQueryDir)) {
         errHandle.DoError("Could not load project " + strProject);
         // Try to show the list of errors, if there is one
-        String sMsg = prjThis.errHandle.getErrList().toString();
+        String sMsg = crpThis.errHandle.getErrList().toString();
         errHandle.DoError("List of errors:\n" + sMsg);
         return false;
       }

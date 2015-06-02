@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.search.Job;
+import nl.ru.crpx.search.JobXq;
 import nl.ru.crpx.search.QueryException;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.util.FileUtil;
@@ -147,15 +148,27 @@ public class RequestHandlerExecute extends RequestHandler {
       }
 
       // Search is done; Create a JSONObject with the correct status and content parts
+      String sCount = search.getJobCount().toString();
+      String sRes = search.getJobResult();
+      // The objContent (done last because the count might be done by this time)
+      DataObjectMapElement objContent = new DataObjectMapElement();
+      objContent.put("searchParam", searchParam.toDataObject());
+      objContent.put("searchTime", search.executionTimeMillis());
+      objContent.put("searchDone", search.finished());
+      objContent.put("jobid", sThisJobId);
+      objContent.put("taskid", search.getJobTaskId());
+      objContent.put("count", sCount);
+      objContent.put("table", sRes);
 
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
       objStatus.put("code", "completed");
-      objStatus.put("message", "The Java-part of the R-webservice works fine.");
+      objStatus.put("message", "The search has finished fine.");
       objStatus.put("userid", sCurrentUserId);
       // Prepare the total response: indexName + status object
       DataObjectMapElement response = new DataObjectMapElement();
       response.put("indexName", indexName);
+      response.put("content", objContent);
       response.put("status", objStatus);
       return response;
     } catch (QueryException | InterruptedException ex) {

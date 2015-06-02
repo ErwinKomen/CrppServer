@@ -15,7 +15,11 @@
   ],
 
   // Specify the maximum number of "XqF" jobs allowed
-  "maxparjobs": 1,
+  "maxparjobs": 5,
+
+  // List of important directories
+  "projectBase": "d:\\etc\\project",
+  "corpusBase": "d:\\Data Files\\Corpora",
 
   // A list of possible Engines, with the default engine identified
   "pinfo": {
