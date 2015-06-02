@@ -83,6 +83,14 @@ public class CrpPserver extends HttpServlet  {
       // Read it from a package parent
       String configFileName = "crpp-settings.json";
       File configFile = new File(getServletContext().getRealPath("/../../../" + configFileName));
+      // One check
+      if (!configFile.exists()) {
+        configFile = new File(getServletContext().getRealPath("/../../" + configFileName));
+        // One more check
+        if (!configFile.exists()) {
+          configFile = new File(getServletContext().getRealPath("/../" + configFileName));
+        }
+      }
       // Check if it is there
       if (configFile.exists()) {
         // It exists, so open it up
@@ -96,6 +104,11 @@ public class CrpPserver extends HttpServlet  {
           // We cannot continue...
           errHandle.DoError("Could not find " + configFileName + "!");
         }
+        // Show where we are reading config from
+        errHandle.debug("config: " + configFileName + " on project directory");
+      } else {
+        // Show where we are reading config from
+        errHandle.debug("config: " + configFile.getAbsolutePath());
       }
       // Process input stream with configuration
       try {
