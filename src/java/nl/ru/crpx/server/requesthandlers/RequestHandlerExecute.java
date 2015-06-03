@@ -104,7 +104,7 @@ public class RequestHandlerExecute extends RequestHandler {
       // Set the correct source 
       prjThis.setSrcDir(new File(sTarget));
     
-      // Get a list of "qxjob" items belonging to the current user
+      // Get a list of "XqJob" items belonging to the current user
       List<Long> userJobIds = Job.getUserJobList(sCurrentUserId, "jobxq");
       // Walk the list and see if there are still active ones
       if (userJobIds != null) {
