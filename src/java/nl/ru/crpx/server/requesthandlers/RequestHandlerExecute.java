@@ -96,7 +96,8 @@ public class RequestHandlerExecute extends RequestHandler {
         // Validate result
         if (lInputFiles.isEmpty()) 
           return DataObject.errorObject("INTERNAL_ERROR", 
-                  "Cannot find input file for language [" + sLng + "] and dir=[" + sFocus + "]");
+                  "Cannot find input file for language [" + sLng + "] and dir=[" + sFocus + "]\n" + 
+                  "Looking in: " + pStart.toString());
         // If anything comes out, then take only the *FIRST* hit!!!!
         sTarget = lInputFiles.get(0);
       }
@@ -143,28 +144,44 @@ public class RequestHandlerExecute extends RequestHandler {
       
       // If search is not done yet, indicate this to the user
       if (!search.finished()) {
-        return DataObject.statusObject("started", "Searching, please wait...", sCurrentUserId, sThisJobId, 
+        // Check if more information is available or not
+        String sMsg = "Searching, please wait...";
+        if (search.getJobProgress().has("start")) {
+          sMsg = search.getJobProgress().toString();
+        } 
+        return DataObject.statusObject("started", sMsg, sCurrentUserId, sThisJobId, 
                 servlet.getSearchManager().getCheckAgainAdviceMinimumMs());
       }
 
-      // Search is done; Create a JSONObject with the correct status and content parts
-      String sCount = search.getJobCount().toString();
-      String sRes = search.getJobResult();
-      // The objContent (done last because the count might be done by this time)
+      // The 'content' and the 'status' can be filled in to some extent...
       DataObjectMapElement objContent = new DataObjectMapElement();
       objContent.put("searchParam", searchParam.toDataObject());
       objContent.put("searchTime", search.executionTimeMillis());
       objContent.put("searchDone", search.finished());
-      objContent.put("jobid", sThisJobId);
       objContent.put("taskid", search.getJobTaskId());
-      objContent.put("count", sCount);
-      objContent.put("table", sRes);
-
-      // Prepare a status object to return
+      objContent.put("jobid", sThisJobId);
       DataObjectMapElement objStatus = new DataObjectMapElement();
-      objStatus.put("code", "completed");
-      objStatus.put("message", "The search has finished fine.");
       objStatus.put("userid", sCurrentUserId);
+      
+      // The search is 'finished', but has it ended correctly?
+      if (search.getJobStatus().equals("error")) {
+        // Prepare a status object to return
+        objStatus.put("code", "error");
+        objStatus.put("message", errHandle.getErrList().toString());
+        search.getJobPtc();
+        search.getJobProgress();
+      } else {
+        // Search is done; Create a JSONObject with the correct status and content parts
+        String sCount = search.getJobCount().toString();
+        String sRes = search.getJobResult();
+        // The objContent (done last because the count might be done by this time)
+        objContent.put("count", sCount);
+        objContent.put("table", sRes);
+
+        // Prepare a status object to return
+        objStatus.put("code", "completed");
+        objStatus.put("message", "The search has finished fine.");
+      }
       // Prepare the total response: indexName + status object
       DataObjectMapElement response = new DataObjectMapElement();
       response.put("indexName", indexName);

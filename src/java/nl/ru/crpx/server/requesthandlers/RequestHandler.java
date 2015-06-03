@@ -83,6 +83,11 @@ public abstract class RequestHandler {
       JSONObject oConfig = servlet.getConfig();
       if (oConfig.has("projectBase")) sProjectBase = oConfig.getString("projectBase");
       if (oConfig.has("corpusBase")) sCorpusBase = oConfig.getString("corpusBase");
+      if (oConfig.has("requests")) {
+        JSONObject oReq = oConfig.getJSONObject("requests");
+        String sOutputType = oReq.getString("defaultOutputType");
+        this.searchParam.put("resultsType", sOutputType);
+      }
       
       // Initially indicate that no project has been loaded yet
       this.prjThis = null;
@@ -140,8 +145,8 @@ public abstract class RequestHandler {
 
       // Get my copy of the project
       this.prjThis = crpThis;
-      // Add the project name as parameter
-      this.searchParam.put("query", crpThis.getName());
+      // Add the project name as parameter (but not as "query"!!!)
+      this.searchParam.put("name", crpThis.getName());
       // Set the project type manager for the CRP
       crpThis.setPrjTypeManager(servlet.getPrjTypeManager());
       crpThis.setSearchManager(this.searchMan);
@@ -150,7 +155,7 @@ public abstract class RequestHandler {
       // Return positively
       return true;
     } catch (Exception ex) {
-      errHandle.DoError("There's a problem initializaing the CRP", ex, RequestHandler.class);
+      errHandle.DoError("There's a problem initializing the CRP", ex, RequestHandler.class);
       // Return failure
       return false;
     }
@@ -242,13 +247,10 @@ public abstract class RequestHandler {
    *
    * @return the unique user id
    */
-  public String getUserId() {
-    return userId;
-  }
-
-  public void setUserId(String sNewId) {
-    userId = sNewId;
-  }
+  public String getUserId() { return userId; }
+  public void setUserId(String sNewId) { userId = sNewId; }
+  public String getProjectBase() { return sProjectBase; }
+  public String getCorpusBase() { return sCorpusBase;}
 
   public static String getReqString(HttpServletRequest request) {
     String sReqString = "";

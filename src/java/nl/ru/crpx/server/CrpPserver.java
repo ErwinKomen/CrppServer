@@ -155,7 +155,7 @@ public class CrpPserver extends HttpServlet  {
       // Show the number of parallel jobs
       errHandle.debug("Maxparjobs = " + prjTypeManager.getMaxParJobs());
 
-      // Try to formulate a response (call "R" if needed)
+      // Try to formulate a response (call the job-related stuff)
       DataObject response = RequestHandler.handle(this, request);
       
       // Determine response type
