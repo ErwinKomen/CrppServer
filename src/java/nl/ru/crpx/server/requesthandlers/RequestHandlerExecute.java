@@ -59,8 +59,6 @@ public class RequestHandlerExecute extends RequestHandler {
       //      "userid": "erkomen" }
       sReqArgument = getReqString(request);
       logger.debug("XqJob query: " + sReqArgument);
-      // Put the argument in the searchparameters
-      searchParam.put("query", sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       // Get a possible userid
@@ -74,6 +72,7 @@ public class RequestHandlerExecute extends RequestHandler {
         return DataObject.errorObject("INTERNAL_ERROR", 
                 "No CRP name has been supplied");
       String sCrpName = jReq.getString("crp");
+      
       // Try loading and initializing CRP
       if (!initCrp(sCrpName, sLng)) 
         return DataObject.errorObject("INTERNAL_ERROR", 
@@ -103,7 +102,25 @@ public class RequestHandlerExecute extends RequestHandler {
       }
       // Set the correct source 
       prjThis.setSrcDir(new File(sTarget));
-    
+
+      // Create the query parameters myself: lng, crp, dir, userid, save
+      JSONObject oQuery = new JSONObject();
+      oQuery.put("lng", jReq.getString("lng"));
+      oQuery.put("crp", jReq.getString("crp"));
+      oQuery.put("dir", jReq.getString("dir"));
+      oQuery.put("userid", jReq.getString("userid"));
+      oQuery.put("save", this.prjThis.getSave());
+      // The 'query' consists of [lng, crp, dir, userid, save]
+      String sNewQuery = oQuery.toString();
+      searchParam.put("query", sNewQuery);
+
+      // Test for situation: 'new job while old is still running'
+      // - User starts new job 'B'
+      // - User has jobs 'A' ... running, and
+      //   a.  'A' does not equal 'B'
+      //       Action: stop job 'A' and all child XqF jobs too
+      //   b.  'A' equals 'B' (status is irrelevant at this point)
+      //       Action: continue
       // Get a list of "XqJob" items belonging to the current user
       List<Long> userJobIds = Job.getUserJobList(sCurrentUserId, "jobxq");
       // Walk the list and see if there are still active ones
@@ -112,19 +129,22 @@ public class RequestHandlerExecute extends RequestHandler {
           // Get the job belonging to this one
           Job userJob = searchMan.searchGetJobXq(String.valueOf(iThisJobId));
           if (userJob != null) {
-            // ================= Debugging ========================
-            // Check how many users are still waiting for this job
-            if (!userJob.finished() && userJob.getClientsWaiting()<=1) {
-              logger.debug("Xqjob decreasing for: " + iThisJobId);
-              // Signal the Xq jobs and XqF jobs that they should stop
-              // TODO: any code here
-
+            // Get the query belonging to this job
+            String sOldQuery = userJob.getJobQuery();
+            // Check if jobs are the same
+            boolean bJobsAreSame = sOldQuery.equals(sNewQuery);
+            // Note: job reduction occurs:
+            //       - old job 'A' is still running
+            //       - user comes up with a new job 'B'
+            if (!bJobsAreSame && !userJob.finished() && userJob.getClientsWaiting()<=1) {
               // Decrease the number of clients waiting for this job to finish
               userJob.changeClientsWaiting(-1);
               // ================= Debugging ========================
               logger.debug("Xqjob reduced clients for: " + iThisJobId);
               // Make the job un-reusable
               userJob.setUnusable();
+              // Since this Xq job is now being finished, its child XqF jobs should also be finished
+              searchMan.finishChildXqFjobs(userJob);
             }
           }
         }
