@@ -61,14 +61,20 @@ public class RequestHandlerExecute extends RequestHandler {
       logger.debug("Considering request /exe: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
+      String sLng = (jReq.has("lng")) ? jReq.getString("lng") : "eng_hist";
+      String sCrpName = (jReq.has("crp")) ? jReq.getString("crp") : "";
+      if (jReq.has("userid")) userId = jReq.getString("userid");
+      sCurrentUserId = userId;
+      String sFocus = (jReq.has("dir")) ? jReq.getString("dir") : "";
+      String sSave = getCrpSaveDate(sCrpName);
       
       // Create the query parameters myself: lng, crp, dir, userid, save
       JSONObject oQuery = new JSONObject();
-      oQuery.put("lng", (jReq.has("lng")) ? jReq.getString("lng") : "");
-      oQuery.put("crp", (jReq.has("crp")) ? jReq.getString("crp") : "");
-      oQuery.put("dir", (jReq.has("dir")) ? jReq.getString("dir") : "");
+      oQuery.put("lng", sLng);
+      oQuery.put("crp", sCrpName);
+      oQuery.put("dir", sFocus);
       oQuery.put("userid", (jReq.has("userid")) ? jReq.getString("userid") : "");
-      oQuery.put("save", this.prjThis.getSave());
+      oQuery.put("save", sSave);
       // The 'query' consists of [lng, crp, dir, userid, save]
       String sNewQuery = oQuery.toString();
       
@@ -78,40 +84,30 @@ public class RequestHandlerExecute extends RequestHandler {
       
       // Check if this query is being executed or is available already
       search = searchMan.getXqJob(sNewQuery);
-      if (search != null) {
+      if (search != null && !search.getJobStatus().equals("error")) {
         // Get the id of the job
         sThisJobId = search.getJobId();
       } else {
-        // Okay, go ahead, and construct a new Xq job...
+        // Okay, go ahead: first remove any running queries of the same user
+        if (!removeRunningQueriesOfUser(sNewQuery)) return DataObject.errorObject("INTERNAL_ERROR", 
+                  "There was a problem removing running queries of the current user");
 
-        // Get a possible userid
-        if (jReq.has("userid")) userId = jReq.getString("userid");
-        sCurrentUserId = userId;
-        // Get the language index
-        String sLng = "eng_hist";
-        if (jReq.has("lng")) sLng = jReq.getString("lng");
         // Get the Corpus Research Project name
-        if (!jReq.has("crp"))
-          return DataObject.errorObject("INTERNAL_ERROR", 
+        if (!jReq.has("crp")) return DataObject.errorObject("INTERNAL_ERROR", 
                   "No CRP name has been supplied");
-        String sCrpName = jReq.getString("crp");
 
         // ============= Try loading and initializing CRP =====================
-        if (!initCrp(sCrpName, sLng)) 
-          return DataObject.errorObject("INTERNAL_ERROR", 
+        if (!initCrp(sCrpName, sLng))  return DataObject.errorObject("INTERNAL_ERROR", 
                   "Could not load the indicated project");
         // ====================================================================
 
         // Get the directory associated with the Language Index
         File fDir = servlet.getSearchManager().getIndexDir(sLng);
-        if (fDir==null) 
-          return DataObject.errorObject("INTERNAL_ERROR", 
+        if (fDir==null) return DataObject.errorObject("INTERNAL_ERROR", 
                   "No language directory associated with [" + sLng + "]");
         // We need the directory as a string
         String sTarget = fDir.getAbsolutePath();
         // Get a sub directory or focus file
-        String sFocus = "";
-        if (jReq.has("dir")) sFocus = jReq.getString("dir");
         if (!sFocus.isEmpty()) {
           // Locate this part 'under' the language index directory
           Path pStart = Paths.get(sTarget);
@@ -127,43 +123,6 @@ public class RequestHandlerExecute extends RequestHandler {
         }
         // Set the correct source 
         prjThis.setSrcDir(new File(sTarget));
-
-
-        // Test for situation: 'new job while old is still running'
-        // - User starts new job 'B'
-        // - User has jobs 'A' ... running, and
-        //   a.  'A' does not equal 'B'
-        //       Action: stop job 'A' and all child XqF jobs too
-        //   b.  'A' equals 'B' (status is irrelevant at this point)
-        //       Action: continue
-        // Get a list of "XqJob" items belonging to the current user
-        List<Long> userJobIds = Job.getUserJobList(sCurrentUserId, "jobxq");
-        // Walk the list and see if there are still active ones
-        if (userJobIds != null) {
-          for (long iThisJobId: userJobIds) {
-            // Get the job belonging to this one
-            Job userJob = searchMan.searchGetJobXq(String.valueOf(iThisJobId));
-            if (userJob != null) {
-              // Get the query belonging to this job
-              String sOldQuery = userJob.getJobQuery();
-              // Check if jobs are the same
-              boolean bJobsAreSame = sOldQuery.equals(sNewQuery);
-              // Note: job reduction occurs:
-              //       - old job 'A' is still running
-              //       - user comes up with a new job 'B'
-              if (!bJobsAreSame && !userJob.finished() && userJob.getClientsWaiting()<=1) {
-                // Decrease the number of clients waiting for this job to finish
-                userJob.changeClientsWaiting(-1);
-                // ================= Debugging ========================
-                logger.debug("Xqjob reduced clients for: " + iThisJobId);
-                // Make the job un-reusable
-                userJob.setUnusable();
-                // Since this Xq job is now being finished, its child XqF jobs should also be finished
-                searchMan.finishChildXqFjobs(userJob);
-              }
-            }
-          }
-        }
         
         // Set the @searchParam correct
         searchParam.put("query", sNewQuery);
@@ -232,4 +191,54 @@ public class RequestHandlerExecute extends RequestHandler {
       return null;
     }
   }  
+  
+  /**
+   * Remove any queries of the current user that are not equal to this
+   *   new query and that are currently running
+   * 
+   * @param sNewQuery 
+   */
+  private boolean removeRunningQueriesOfUser(String sNewQuery) {
+    try {
+      // Test for situation: 'new job while old is still running'
+      // - User starts new job 'B'
+      // - User has jobs 'A' ... running, and
+      //   a.  'A' does not equal 'B'
+      //       Action: stop job 'A' and all child XqF jobs too
+      //   b.  'A' equals 'B' (status is irrelevant at this point)
+      //       Action: continue
+      // Get a list of "XqJob" items belonging to the current user
+      List<Long> userJobIds = Job.getUserJobList(sCurrentUserId, "jobxq");
+      // Walk the list and see if there are still active ones
+      if (userJobIds != null) {
+        for (long iThisJobId: userJobIds) {
+          // Get the job belonging to this one
+          Job userJob = searchMan.searchGetJobXq(String.valueOf(iThisJobId));
+          if (userJob != null) {
+            // Get the query belonging to this job
+            String sOldQuery = userJob.getJobQuery();
+            // Check if jobs are the same
+            boolean bJobsAreSame = sOldQuery.equals(sNewQuery);
+            // Note: job reduction occurs:
+            //       - old job 'A' is still running
+            //       - user comes up with a new job 'B'
+            if (!bJobsAreSame && !userJob.finished() && userJob.getClientsWaiting()<=1) {
+              // Decrease the number of clients waiting for this job to finish
+              userJob.changeClientsWaiting(-1);
+              // ================= Debugging ========================
+              logger.debug("Xqjob reduced clients for: " + iThisJobId);
+              // Make the job un-reusable
+              userJob.setUnusable();
+              // Since this Xq job is now being finished, its child XqF jobs should also be finished
+              searchMan.finishChildXqFjobs(userJob);
+            }
+          }
+        }
+      }
+      // Return positively
+      return true;
+    } catch (Exception ex) {
+      return errHandle.DoError("Could not remove stale jobs", ex, RequestHandlerExecute.class);
+    }
+  }
 }

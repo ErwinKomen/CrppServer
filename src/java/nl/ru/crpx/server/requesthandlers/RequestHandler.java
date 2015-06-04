@@ -14,6 +14,7 @@ import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.search.SearchParameters;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.tools.ErrHandle;
+import nl.ru.crpx.tools.General;
 import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
@@ -101,6 +102,64 @@ public abstract class RequestHandler {
     }
   }
   
+  /**
+   * Given the name of a CRP, get its full path
+   * 
+   * @param sName
+   * @return 
+   */
+  public String getCrpPath(String sName) {
+    try {
+      String sProjectPath = sName;
+      
+      // Set the project path straight
+      if (!sProjectPath.contains("/")) {
+        sProjectPath = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/" + sProjectPath);
+        if (!sProjectPath.contains(".")) {
+          sProjectPath += ".crpx";
+        }
+      }
+      // Return our findings
+      return sProjectPath;
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get CRP path", ex, RequestHandler.class);
+      return "";
+    }
+  }
+  
+  /**
+   * Find the CRP called 'sName' and provide its save date
+   * 
+   * @param sName
+   * @return 
+   */
+  public String getCrpSaveDate(String sName) {
+    try {
+      String sProjectPath;
+      
+      // Check the name we received
+      if (sName.contains("/") || sName.contains("\\")) {
+        sProjectPath = sName;
+      } else {
+        // Get the full path
+        sProjectPath = getCrpPath(sName);
+      }
+      // turn it into a file
+      File fCrp = new File(sProjectPath);
+      // Check if it exists
+      if (fCrp.exists()) {
+        // Retrieve and give back toe file's save date
+        return General.getSaveDate(fCrp);
+      } else {
+        // No file means no save date
+        return "";
+      }
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get CRP save date", ex, RequestHandler.class);
+      return "";
+    }
+  }
+  
   /* ---------------------------------------------------------------------------
    Name: initCrp
    Goal: Initialize CRP-related parameters for this requesthandler
@@ -124,12 +183,7 @@ public abstract class RequestHandler {
       sQueryDir = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/xq");
       sInputDir = this.indexDir.getAbsolutePath();
       // Set the project path straight
-      if (!sProjectPath.contains("/")) {
-        sProjectPath = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/" + sProjectPath);
-        if (!sProjectPath.contains(".")) {
-          sProjectPath += ".crpx";
-        }
-      }
+      sProjectPath = getCrpPath(sProjectPath);
       // Load the project
       if (!crpThis.Load(sProjectPath, sInputDir, sOutputDir, sQueryDir)) {
         errHandle.DoError("Could not load project " + strProject);
