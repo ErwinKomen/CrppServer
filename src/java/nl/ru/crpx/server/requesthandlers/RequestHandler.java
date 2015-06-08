@@ -36,7 +36,7 @@ import org.apache.log4j.Logger;
  */
 public abstract class RequestHandler {
   // ============== My own error handler =======================================
-  static final ErrHandle errHandle = new ErrHandle(nl.ru.crpx.cmd.RequestHandler.class);
+  static final ErrHandle errHandle = new ErrHandle(RequestHandler.class);
 
   // ============== Variables belonging to the request handler ================
   /** The available request handlers by name */
@@ -56,9 +56,9 @@ public abstract class RequestHandler {
   String sReqArgument = "";     // Request arguments
   String sLastReqArg = "";      // Arguments of last request
   String sCrpFile = "";         // Full path of the CRP file we are handling
-  String strProject;            // The name of the project 
+  // String strProject;            // The name of the project 
   String indexName;             // The query specification
-  File indexDir;                // Pointer to the input directory
+  // File indexDir;                // Pointer to the input directory
   SearchParameters searchParam; // Search parameters from request 
   SearchManager searchMan;      // The search manager, which executes and caches our searches 
   CrpPserver servlet;           // The servlet 
@@ -75,8 +75,8 @@ public abstract class RequestHandler {
       this.request  = request;
       // Take over the index name
       this.indexName = indexName;
-      this.indexDir  = null;
-      // Get the search manager from the calling CrpxProcessor
+      // this.indexDir  = null;
+      // Get the search manager from the calling CrpxProcessor or CrpPserver
       this.searchMan = servlet.getSearchManager();
       this.searchParam = servlet.getSearchParameters(indexName);
       
@@ -105,16 +105,17 @@ public abstract class RequestHandler {
   /**
    * Given the name of a CRP, get its full path
    * 
-   * @param sName
+   * @param sName   name of project without / or \
+   * @param sUserId id of the user for this project
    * @return 
    */
-  public String getCrpPath(String sName) {
+  public static String getCrpPath(String sName, String sUserId) {
     try {
       String sProjectPath = sName;
       
       // Set the project path straight
       if (!sProjectPath.contains("/")) {
-        sProjectPath = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/" + sProjectPath);
+        sProjectPath = FileUtil.nameNormalize(sProjectBase + "/" + sUserId + "/" + sProjectPath);
         if (!sProjectPath.contains(".")) {
           sProjectPath += ".crpx";
         }
@@ -130,10 +131,11 @@ public abstract class RequestHandler {
   /**
    * Find the CRP called 'sName' and provide its save date
    * 
-   * @param sName
+   * @param sName   Name of the project 
+   * @param sUserId User for this project
    * @return 
    */
-  public String getCrpSaveDate(String sName) {
+  public String getCrpSaveDate(String sName, String sUserId) {
     try {
       String sProjectPath;
       
@@ -142,7 +144,7 @@ public abstract class RequestHandler {
         sProjectPath = sName;
       } else {
         // Get the full path
-        sProjectPath = getCrpPath(sName);
+        sProjectPath = getCrpPath(sName, sUserId);
       }
       // turn it into a file
       File fCrp = new File(sProjectPath);
@@ -157,61 +159,6 @@ public abstract class RequestHandler {
     } catch (Exception ex) {
       errHandle.DoError("Could not get CRP save date", ex, RequestHandler.class);
       return "";
-    }
-  }
-  
-  /* ---------------------------------------------------------------------------
-   Name: initCrp
-   Goal: Initialize CRP-related parameters for this requesthandler
-   Parameters:  @request - HTTP request object
-                @responseObject - where to write our response
-   History:
-   7/nov/2014   ERK Created
-   --------------------------------------------------------------------------- */
-  public boolean initCrp(String sProjectPath, String sLngIndex) {
-    String sInputDir;   // Input directory for this project
-    String sOutputDir;  // Output directory for this project
-    String sQueryDir;   // Query directory for this project
-
-    try {
-      // Get the correct input directory from the [indexName] part
-      this.indexDir = servlet.getSearchManager().getIndexDir(sLngIndex);
-      // Create room for a corpus research project
-      CorpusResearchProject crpThis = new CorpusResearchProject();
-      // Set output and query directory, depending on the user
-      sOutputDir = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/out");
-      sQueryDir = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/xq");
-      sInputDir = this.indexDir.getAbsolutePath();
-      // Set the project path straight
-      sProjectPath = getCrpPath(sProjectPath);
-      // Load the project
-      if (!crpThis.Load(sProjectPath, sInputDir, sOutputDir, sQueryDir)) {
-        errHandle.DoError("Could not load project " + strProject);
-        // Try to show the list of errors, if there is one
-        String sMsg = crpThis.errHandle.getErrList().toString();
-        errHandle.DoError("List of errors:\n" + sMsg);
-        return false;
-      }
-
-      // Modify the input directory
-      sInputDir = sCorpusBase;
-      
-
-      // Get my copy of the project
-      this.prjThis = crpThis;
-      // Add the project name as parameter (but not as "query"!!!)
-      this.searchParam.put("name", crpThis.getName());
-      // Set the project type manager for the CRP
-      crpThis.setPrjTypeManager(servlet.getPrjTypeManager());
-      crpThis.setSearchManager(this.searchMan);
-      // Get the name of the project
-      this.strProject = crpThis.getName();
-      // Return positively
-      return true;
-    } catch (Exception ex) {
-      errHandle.DoError("There's a problem initializing the CRP", ex, RequestHandler.class);
-      // Return failure
-      return false;
     }
   }
   
@@ -260,13 +207,22 @@ public abstract class RequestHandler {
         case "debug":
           requestHandler = new RequestHandlerDebug(servlet, request, indexName);
           break;
-        case "show":
+        case "load":    // Laden van een CRP voor een gebruiker
+          requestHandler = new RequestHandlerLoad(servlet, request, indexName);
+          break;
+        case "crplist": // List available CRPs for one or all user(s)
+          requestHandler = new RequestHandlerCrpList(servlet, request, indexName);
+          break;
+        case "save":    // Opslaan van een CRP voor een gebruiker
+          requestHandler = new RequestHandlerSave(servlet, request, indexName);
+          break;
+        case "show":    // A summary of the details of the indicated CRP
           requestHandler = new RequestHandlerShow(servlet, request, indexName);
           break;
-        case "execute": case "exe":
+        case "execute": case "exe": // Uitvoeren van een CRP
           requestHandler = new RequestHandlerExecute(servlet, request, indexName);
           break;
-        case "statusxq":
+        case "statusxq":  // Opvragen status XqJob
           requestHandler = new RequestHandlerStatusXq(servlet, request, indexName);
           break;
         case "":

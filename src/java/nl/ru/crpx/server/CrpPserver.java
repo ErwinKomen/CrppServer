@@ -20,13 +20,13 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import nl.ru.crpx.cmd.CrpxProcessor;
 import nl.ru.crpx.dataobject.DataFormat;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectPlain;
 import nl.ru.crpx.project.PrjTypeManager;
 import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.search.SearchParameters;
+import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.crpx.server.requesthandlers.RequestHandler;
 import nl.ru.crpx.tools.ErrHandle;
 import nl.ru.crpx.tools.FileIO;
@@ -47,19 +47,21 @@ import org.apache.log4j.Logger;
    01/jun/2015   ERK Created for Java
    --------------------------------------------------------------------------- */
 @WebServlet(name = "crppw", 
-            urlPatterns = {"/debug", "/exe", "/statusxq", "/show"})
+            urlPatterns = {"/debug", "/load", "/save", "/exe", "/statusxq", "/show"})
 public class CrpPserver extends HttpServlet  {
   // The servlet contains a 'logger'
   private static final Logger logger = Logger.getLogger(CrpPserver.class);
-  private static final ErrHandle errHandle = new ErrHandle(CrpxProcessor.class);
+  private static final ErrHandle errHandle = new ErrHandle(CrpPserver.class);
   // =================== instance variables ==================================
-  private static JSONObject config;           // Configuration object
-  private static SearchManager searchManager; // The search manager we make
-  private static PrjTypeManager prjTypeManager;
+  private static JSONObject config;             // Configuration object
+  private static SearchManager searchManager;   // The search manager we make
+  private static PrjTypeManager prjTypeManager; // 
+  private static CrpManager crpManager;         // Link to the CRP-User list manager
   // =================== Simple getters =======================================
   public SearchManager getSearchManager() {return searchManager;}
   public PrjTypeManager getPrjTypeManager() { return prjTypeManager;}
   public JSONObject getConfig() { return config;}
+  public CrpManager getCrpManager() { return crpManager; }
   
 /* ---------------------------------------------------------------------------
    Name: init
@@ -126,9 +128,12 @@ public class CrpPserver extends HttpServlet  {
 
       // Create a new project type manager
       prjTypeManager = new PrjTypeManager(config);
+      
+      // Create a new CRP-user list manager
+      crpManager = new CrpManager(this, errHandle);
 
       // Show that we are ready
-      logger.info("CrpxProcessor: server is ready.");
+      logger.info("CrpPserver: server is ready.");
     } catch (Exception ex) {
       errHandle.DoError("CrppS: could not initialize server", ex, CrpPserver.class);
     }
@@ -289,7 +294,7 @@ public class CrpPserver extends HttpServlet  {
       // Return the object that contains the parameters
       return param;
     } catch (Exception ex) {
-      errHandle.DoError("could not get search parameters", ex, CrpxProcessor.class);
+      errHandle.DoError("could not get search parameters", ex, CrpPserver.class);
       return null;
     }
   }  

@@ -19,6 +19,7 @@ import nl.ru.crpx.search.Job;
 import nl.ru.crpx.search.JobXq;
 import nl.ru.crpx.search.QueryException;
 import nl.ru.crpx.server.CrpPserver;
+import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
@@ -31,8 +32,10 @@ import org.apache.log4j.Logger;
  */
 public class RequestHandlerExecute extends RequestHandler {
   @SuppressWarnings("hiding")
-  // =================== Local variables =======================================
+  // =================== Static variables =======================================
   private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
+  // =================== Local variables =======================================
+  private CrpManager crpManager;
   
   // =================== Class initialisation
   public RequestHandlerExecute(CrpPserver servlet, HttpServletRequest request, String indexName) {
@@ -43,7 +46,8 @@ public class RequestHandlerExecute extends RequestHandler {
     } else {
       sCurrentUserId = request.getUserPrincipal().getName();      
     }
-    
+    // Get my local access to the Crp-User list manager
+    this.crpManager = servlet.getCrpManager();
   }
   
   @Override
@@ -66,7 +70,7 @@ public class RequestHandlerExecute extends RequestHandler {
       if (jReq.has("userid")) userId = jReq.getString("userid");
       sCurrentUserId = userId;
       String sFocus = (jReq.has("dir")) ? jReq.getString("dir") : "";
-      String sSave = getCrpSaveDate(sCrpName);
+      String sSave = getCrpSaveDate(sCrpName, sCurrentUserId);
       
       // Create the query parameters myself: lng, crp, dir, userid, save
       JSONObject oQuery = new JSONObject();
@@ -97,9 +101,21 @@ public class RequestHandlerExecute extends RequestHandler {
                   "No CRP name has been supplied");
 
         // ============= Try loading and initializing CRP =====================
-        if (!initCrp(sCrpName, sLng))  return DataObject.errorObject("INTERNAL_ERROR", 
-                  "Could not load the indicated project");
+
+        // Get the CRP that is supposed to be executed (or load it if it is not loaded yet)
+        prjThis = crpManager.getCrp(sCrpName, sCurrentUserId);
+        if (prjThis == null) {
+          String sMsg;
+          if (errHandle.hasErr())
+            sMsg = "Errors: " + errHandle.getErrList().toString();
+          else
+            sMsg = "Could not initialize project [" + sCrpName + "] for user [" +
+                    sCurrentUserId + "]";
+          return DataObject.errorObject("INTERNAL_ERROR", sMsg);
+        }
         // ====================================================================
+        // Add the project name as parameter (but not as "query"!!!)
+        this.searchParam.put("name", sCrpName);
 
         // Get the directory associated with the Language Index
         File fDir = servlet.getSearchManager().getIndexDir(sLng);
