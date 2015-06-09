@@ -42,7 +42,6 @@ public class RequestHandlerCrpList extends RequestHandler {
   public DataObject handle() {
     try {
       debug(logger, "REQ CrpList");
-      // Get the project that should be loaded
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen" }
       // Note: if no user is given, then we should give all users and all crp's
@@ -54,10 +53,12 @@ public class RequestHandlerCrpList extends RequestHandler {
         sCurrentUserId = jReq.getString("userid");
       else
         sCurrentUserId = "";
+      // Check for a filter
+      String sFilter = "";
+      if (jReq.has("filter"))
+        sFilter = jReq.getString("filter");
       // Get a list of all the CRPs available for the indicated user
-      JSONArray arList = crpManager.getCrpList( sCurrentUserId);
-      DataObjectMapElement objContent = new DataObjectMapElement();
-      objContent.put("crplist", arList.toString());
+      DataObject objContent = crpManager.getCrpList( sCurrentUserId, sFilter);
       
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
@@ -71,7 +72,7 @@ public class RequestHandlerCrpList extends RequestHandler {
       response.put("status", objStatus);
       return response;
     } catch (Exception ex) {
-      errHandle.DoError("Loading the CRP failed", ex, RequestHandlerCrpList.class);
+      errHandle.DoError("Providing a CRP list failed", ex, RequestHandlerCrpList.class);
       return null;
     }
   }

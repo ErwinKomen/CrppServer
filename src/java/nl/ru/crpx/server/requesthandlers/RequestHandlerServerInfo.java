@@ -17,7 +17,7 @@ import org.apache.log4j.Logger;
 
 /**
  *
- * @author u459154
+ * @author Erwin R. Komen
  */
 public class RequestHandlerServerInfo extends RequestHandler {
   @SuppressWarnings("hiding")

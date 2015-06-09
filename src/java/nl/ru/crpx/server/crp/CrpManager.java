@@ -16,6 +16,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import nl.ru.crpx.dataobject.DataObject;
+import nl.ru.crpx.dataobject.DataObjectList;
+import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.server.CrpPserver;
 import static nl.ru.crpx.server.crp.CrpUser.sProjectBase;
@@ -115,18 +118,17 @@ public class CrpManager {
    * @param sUserId
    * @return 
    */
-  public JSONArray getCrpList(String sUserId) {
+  public DataObject getCrpList(String sUserId, String sFilter) {
     String sUserPath;     // Where the users are stored
     List<String> lUsers;  // List of crpx
-    int iPrj = 1;         // The project index
     
     try {
       // Create a list to reply
-      JSONArray arBack = new JSONArray();
+      DataObjectList arList = new DataObjectList("crplist");
       
       // Get a path to the users
       sUserPath = FileUtil.nameNormalize(sProjectBase);
-      if (sUserPath.isEmpty()) return arBack;
+      if (sUserPath.isEmpty()) return arList;
       // Initialise
       lUsers = new ArrayList<>();
       Path dir = Paths.get(sUserPath);
@@ -145,13 +147,26 @@ public class CrpManager {
             for (Path pathCrp : streamCrp) {
               // Get the name of this crp
               String sCrp = pathCrp.getFileName().toString();
-              // Okay, create a reply object
-              JSONObject oOne = new JSONObject();
-              oOne.put("userid", sUser);
-              oOne.put("crp", sCrp);
-              oOne.put("loaded", hasCrpUser(sCrp, sUser));
-              // Include the object here
-              arBack.put(oOne);
+              // Check its status
+              boolean bLoaded = hasCrpUser(sCrp, sUser);
+              boolean bInclude;
+              switch (sFilter) {
+                case "loaded":
+                  bInclude = bLoaded; break;
+                case "not loaded": case "notloaded":
+                  bInclude = !bLoaded; break;
+                default:
+                  bInclude = true; break;
+              }
+              if (bInclude) {
+                // Okay, create a reply object
+                DataObjectMapElement oData = new DataObjectMapElement();
+                oData.put("userid", sUser);
+                oData.put("crp", sCrp);
+                oData.put("loaded", bLoaded);
+                // Include the object here
+                arList.add(oData);
+              }
             }
           }
         }
@@ -159,7 +174,7 @@ public class CrpManager {
         errHandle.DoError("Could not get a list of CRP-User objects", ex, CrpManager.class);
       }
       // Return the array
-      return arBack;
+      return arList;
     } catch (Exception ex) {
       errHandle.DoError("Could not get a list of CRP-User objects", ex, CrpManager.class);
       return null;

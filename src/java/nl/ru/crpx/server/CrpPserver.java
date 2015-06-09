@@ -167,7 +167,8 @@ public class CrpPserver extends HttpServlet  {
       DataFormat outputType = response.getOverrideType(); // some responses override the user's request (i.e. article XML)
       if (outputType == null) {
         // Default output type of the Crpp-server is JSON
-        outputType = DataFormat.JSON;
+        // outputType = DataFormat.JSON;
+        outputType = ServletUtil.getOutputType(request, searchManager.getDefaultOutputType());
       }
       
       // Write HTTP headers (content type and cache)

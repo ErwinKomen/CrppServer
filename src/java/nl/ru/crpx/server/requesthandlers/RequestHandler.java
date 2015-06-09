@@ -6,9 +6,11 @@ import java.net.URLDecoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
+import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.search.SearchParameters;
@@ -262,7 +264,42 @@ public abstract class RequestHandler {
   public String getProjectBase() { return sProjectBase; }
   public String getCorpusBase() { return sCorpusBase;}
 
+  /**
+   * getReqString - Read the HTTP servlet request string,
+   *                decode into key/value pairs,
+   *                process each pair that can be processed,
+   *                and return the part that has no key (JSON string)
+   * 
+   * @param request
+   * @return 
+   */
   public static String getReqString(HttpServletRequest request) {
+    JSONObject oReq;
+    String sJsonPart = "";
+    
+    try {
+      // Read the request and divide it into key-value pairs
+      oReq = getReqObject(request);
+      // Check for "query"
+      if (oReq.has(("query"))) sJsonPart = oReq.getJSONObject("query").toString();
+      
+      // Return the JSON query part
+      return sJsonPart;
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get the search string", ex, RequestHandler.class);
+      return "";
+    }
+  }
+  
+  /**
+   * getReqObject - read the request and transform it into a key/value dataobject
+   *                The value that has no key gets the key "query" assigned
+   * 
+   * @param request - The http servlet request object
+   * @return        - A dataobject with a key-value pair listing
+   */
+  public static JSONObject getReqObject(HttpServletRequest request) {
+    JSONObject oBack = new JSONObject();
     String sReqString = "";
     try {
       // Get the query string
@@ -276,12 +313,27 @@ public abstract class RequestHandler {
       } else {
         sReqString = URLDecoder.decode(sQueryIdArg, "UTF-8");
       }
+      // Divide the string into pairs
+      String[] pairs = sReqString.split("&");
+      // Walk through all pairs
+      for (String pair : pairs) {
+        // Get a possible equal sign
+        int idx = pair.indexOf("=");
+        // Do we have an equal sign for this pair?
+        if (idx <= 0)
+          oBack.put("query", new JSONObject(pair));
+        else {
+          // Get the "key" part
+          oBack.put(pair.substring(0, idx), pair.substring(idx + 1));
+        }
+      }
+      // Return what we found
+      return oBack;
     } catch (UnsupportedEncodingException ex) {
       errHandle.DoError("Could not get the search string", ex, RequestHandler.class);
+      return null;
     }
-    // Return the result
-    return(sReqString);
-  }
+}
   
   /**
    * Get the correct user id.
