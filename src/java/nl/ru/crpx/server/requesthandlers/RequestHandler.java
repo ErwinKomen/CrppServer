@@ -226,6 +226,7 @@ public abstract class RequestHandler {
           break;
         case "statusxq":  // Opvragen status XqJob
           requestHandler = new RequestHandlerStatusXq(servlet, request, indexName);
+          break;
         case "serverinfo":  // Information about corpora
           requestHandler = new RequestHandlerServerInfo(servlet, request, indexName);
           break;
