@@ -7,7 +7,6 @@
  */
 package nl.ru.crpx.server.requesthandlers;
 
-import com.google.gson.Gson;
 import java.io.File;
 import java.util.Collection;
 import javax.servlet.http.HttpServletRequest;
@@ -16,8 +15,6 @@ import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.util.FileUtil;
-import nl.ru.util.Json;
-import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
 
 /**
@@ -46,13 +43,11 @@ public class RequestHandlerServerInfo extends RequestHandler {
     String sCorpora = "";
     File fCrpInfo = new File ("/etc/corpora/crp-info.json");
     if (fCrpInfo.exists()) sCorpora = FileUtil.readFile(fCrpInfo);
-    Gson gson = new Gson();
-    DataObject oCorpora = gson.fromJson(sCorpora, DataObject.class);
     
     // Combine all of it
     DataObjectMapElement objContent = new DataObjectMapElement();
     objContent.put("indices", doIndices);
-    objContent.put("corpora", oCorpora);
+    objContent.put("corpora", sCorpora);
     
     // Prepare a status object to return
     DataObjectMapElement objStatus = new DataObjectMapElement();
