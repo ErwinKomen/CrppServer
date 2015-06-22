@@ -116,6 +116,7 @@ public class CrpManager {
    *              If no user is given: provide all users and all CRPs
    * 
    * @param sUserId
+   * @param sFilter
    * @return 
    */
   public DataObject getCrpList(String sUserId, String sFilter) {
