@@ -285,7 +285,10 @@ public abstract class RequestHandler {
       // Read the request and divide it into key-value pairs
       oReq = getReqObject(request);
       // Check for "query"
-      if (oReq.has(("query"))) sJsonPart = oReq.getJSONObject("query").toString();
+      if (oReq.has("query")) {
+        // sJsonPart = oReq.getJSONObject("query").toString();
+        sJsonPart = oReq.getString("query");
+      }
       
       // Return the JSON query part
       return sJsonPart;
@@ -324,9 +327,10 @@ public abstract class RequestHandler {
         // Get a possible equal sign
         int idx = pair.indexOf("=");
         // Do we have an equal sign for this pair?
-        if (idx <= 0)
-          oBack.put("query", new JSONObject(pair));
-        else {
+        if (idx <= 0) {
+          // oBack.put("query", new JSONObject(pair));
+          oBack.put("query", pair);
+        } else {
           // Get the "key" part
           oBack.put(pair.substring(0, idx), pair.substring(idx + 1));
         }
