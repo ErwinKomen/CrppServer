@@ -62,8 +62,19 @@ public class RequestHandlerExecute extends RequestHandler {
       //      "userid": "erkomen" }
       sReqArgument = getReqString(request);
       logger.debug("Considering request /exe: " + sReqArgument);
+      // Check for empty string
+      if (sReqArgument.isEmpty()) {
+        return DataObject.errorObject("INTERNAL_ERROR", 
+          "The /exe request should at least have one JSON string parameter, optionally preceded by 'query='. ");
+      }
       // Take apart the request object
-      JSONObject jReq = new JSONObject(sReqArgument);
+      JSONObject jReq;
+      try {
+        jReq = new JSONObject(sReqArgument);
+      } catch (Exception ex) {
+        return DataObject.errorObject("INTERNAL_ERROR", 
+          "Cannot interpret /exe request ["+ sReqArgument +"]");
+      }
       String sLng = (jReq.has("lng")) ? jReq.getString("lng") : "eng_hist";
       String sCrpName = (jReq.has("crp")) ? jReq.getString("crp") : "";
       if (jReq.has("userid")) userId = jReq.getString("userid");

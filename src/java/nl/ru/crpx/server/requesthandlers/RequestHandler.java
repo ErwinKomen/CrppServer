@@ -311,6 +311,9 @@ public abstract class RequestHandler {
     try {
       // Get the query string
       String sQueryIdArg = request.getQueryString();
+      // ============= Debugging ==================
+      errHandle.debug("getReqObject: string = [" + sQueryIdArg + "]");
+      // ==========================================
       if (sQueryIdArg == null || sQueryIdArg.isEmpty()) {
         // Perhaps this is a POST request? Try to get POST parameter
         sQueryIdArg = request.getParameter("args");        
