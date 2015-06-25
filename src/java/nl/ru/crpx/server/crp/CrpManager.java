@@ -143,7 +143,7 @@ public class CrpManager {
           // Is this the user we are looking for?
           if (sUserId.isEmpty() || sUser.equals(sUserId)) {
             // Get all the CRP files in the user's directory
-            DirectoryStream<Path> streamCrp = Files.newDirectoryStream(pathUser);
+            DirectoryStream<Path> streamCrp = Files.newDirectoryStream(pathUser, "*.crpx");
             for (Path pathCrp : streamCrp) {
               // Get the name of this crp
               String sCrp = pathCrp.getFileName().toString();

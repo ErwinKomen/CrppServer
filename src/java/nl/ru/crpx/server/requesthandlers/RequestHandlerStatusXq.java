@@ -80,11 +80,16 @@ public class RequestHandlerStatusXq  extends RequestHandler {
         sCode = "working";
         sResult = "please wait";
         JSONObject oProg = search.getJobProgress();
-        objContent.put("start", oProg.getString("start"));    // Name of most recently started file
-        objContent.put("count", oProg.getInt("count"));       // Number of files that have started
-        objContent.put("total", oProg.getInt("total"));       // Total number of files to be done
-        objContent.put("finish", oProg.getString("finish"));  // Name of most recently finished file
-        objContent.put("ready", oProg.getInt("ready"));       // Number of files ready
+        String sStatusStart = oProg.has("start") ? oProg.getString("start") : "-";
+        String sStatusFinish = oProg.has("finish") ? oProg.getString("finish") : "-";
+        objContent.put("start", sStatusStart);    // Name of most recently started file
+        objContent.put("finish", sStatusFinish);  // Name of most recently finished file
+        int iStatusCount = oProg.has("count") ? oProg.getInt("count") : 0;
+        int iStatusTotal = oProg.has("total") ? oProg.getInt("total") : 0;
+        int iStatusReady = oProg.has("ready") ? oProg.getInt("ready") : 0;
+        objContent.put("count", iStatusCount);       // Number of files that have started
+        objContent.put("total", iStatusTotal);       // Total number of files to be done
+        objContent.put("ready", iStatusReady);       // Number of files ready
       }
       
     

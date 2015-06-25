@@ -49,6 +49,7 @@ public abstract class RequestHandler {
     availableHandlers = new HashMap<String, Class<? extends RequestHandler>>();
     availableHandlers.put("debug", RequestHandlerDebug.class);
   }
+  Map<String, String[]> reqParams;
   String userId = "undefined user id";          // Default user id
   String sCurrentUserId = "";                   // Local copy of userid
   static String lastIP = "";                    /** IP address of last request */
@@ -202,7 +203,7 @@ public abstract class RequestHandler {
         lastIP = thisIP;
         errHandle.debug("IP: " + thisIP + " at: " + getCurrentTimeStamp());
       }
-
+      errHandle.debug("REQ calling for: " + indexName);
       // Choose the RequestHandler subclass
       RequestHandler requestHandler = null;
       switch (indexName) {
@@ -308,16 +309,34 @@ public abstract class RequestHandler {
   public static JSONObject getReqObject(HttpServletRequest request) {
     JSONObject oBack = new JSONObject();
     String sReqString = "";
+    String sMethod = "GET";
     try {
       // Get the query string
       String sQueryIdArg = request.getQueryString();
-      // ============= Debugging ==================
-      errHandle.debug("getReqObject: string = [" + sQueryIdArg + "]");
-      // ==========================================
+      errHandle.debug("getReqObject #1: ["+ sQueryIdArg + "]");
       if (sQueryIdArg == null || sQueryIdArg.isEmpty()) {
         // Perhaps this is a POST request? Try to get POST parameter
-        sQueryIdArg = request.getParameter("args");        
+        sQueryIdArg = request.getParameter("args");    
+        sMethod = "POST";
       }
+      // ============= Debugging ==================
+      errHandle.debug("getReqObject #2: ["+ sMethod + "] string = [" + sQueryIdArg + "]");
+      // Check for parameters
+      errHandle.debug("There are parameters: " + request.getParameterMap().size() );
+      for (String sName : request.getParameterMap().keySet()) {
+        String sValue = request.getParameter(sName);
+        // Check for empty value
+        if (sValue.isEmpty()) {
+          sValue = sName;
+          sName = "query";
+        }
+        errHandle.debug("Parameter [" + sName + "]=[" + sValue + "]");  
+        oBack.put(sName, sValue);
+      }
+      // If we have a good object, return now
+      if (oBack.length()>0) return oBack;
+      
+      // ==========================================
       if (sQueryIdArg == null) {
         sReqString = "";
       } else {

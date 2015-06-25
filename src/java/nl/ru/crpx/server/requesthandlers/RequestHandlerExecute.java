@@ -59,6 +59,7 @@ public class RequestHandlerExecute extends RequestHandler {
       //   {  "lng": "eng_hist",
       //      "crp": "V2_versie11.crpx",
       //      "dir": "OE",
+      //      "cache": false,
       //      "userid": "erkomen" }
       sReqArgument = getReqString(request);
       logger.debug("Considering request /exe: " + sReqArgument);
@@ -80,7 +81,17 @@ public class RequestHandlerExecute extends RequestHandler {
       if (jReq.has("userid")) userId = jReq.getString("userid");
       sCurrentUserId = userId;
       String sFocus = (jReq.has("dir")) ? jReq.getString("dir") : "";
+      // Normally do caching
+      boolean bCache = (jReq.has("cache")) ? jReq.getBoolean("cache") : true;
       String sSave = getCrpSaveDate(sCrpName, sCurrentUserId);
+      // Double checking
+      if (jReq.has("cache")) {
+        boolean bValue = jReq.getBoolean("cache");
+        logger.debug("Cache boolean = " + bValue );
+      } else {
+        logger.debug("Cache is not defined!!! jReq=" + jReq.toString());
+      }
+      
       
       // Create the query parameters myself: lng, crp, dir, userid, save
       JSONObject oQuery = new JSONObject();
@@ -97,10 +108,13 @@ public class RequestHandlerExecute extends RequestHandler {
       String sThisJobId;
       
       // Check if this query is being executed or is available already
-      search = searchMan.getXqJob(sNewQuery);
+      search = (bCache) ? searchMan.getXqJob(sNewQuery) : null;
+      // Note: if "cache" has been set to "false", then we should not consider the previous job
       if (search != null && !search.getJobStatus().equals("error")) {
         // Get the id of the job
         sThisJobId = search.getJobId();
+        // Indicate that we are using a job from the cache
+        logger.debug("ReqHandleExe: re-using job #" + sThisJobId);
       } else {
         // Okay, go ahead: first remove any running queries of the same user
         if (!removeRunningQueriesOfUser(sNewQuery)) return DataObject.errorObject("INTERNAL_ERROR", 
@@ -152,9 +166,9 @@ public class RequestHandlerExecute extends RequestHandler {
         
         // Set the @searchParam correct
         searchParam.put("query", sNewQuery);
-
+        
         // Initiate the search by invoking "searchXq"
-        search = searchMan.searchXq(prjThis, sCurrentUserId, searchParam);
+        search = searchMan.searchXq(prjThis, sCurrentUserId, searchParam, bCache);
         
         // Get the @id of the job that has been created
         sThisJobId = search.getJobId();
