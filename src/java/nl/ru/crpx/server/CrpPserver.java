@@ -189,7 +189,7 @@ public class CrpPserver extends HttpServlet  {
                 "Illegal JSONP callback function name. Must be a valid Javascript name.");
         callbackFunction = "";
       }
-      String rootEl = "nlabResponse";
+      String rootEl = "crppsResponse";
       // TODO: handle DataObjectPlain
       if (response instanceof DataObjectPlain && !((DataObjectPlain) response).shouldAddRootElement()) {
         // Plain objects sometimes don't want root objects (e.g. because they're 

@@ -16,6 +16,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import nl.ru.crpx.dataobject.DataFormat;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
@@ -120,6 +121,9 @@ public class CrpManager {
    * @return 
    */
   public DataObject getCrpList(String sUserId, String sFilter) {
+    return getCrpList(sUserId, sFilter, "*.crpx");
+  }
+  public DataObject getCrpList(String sUserId, String sFilter, String sFileName) {
     String sUserPath;     // Where the users are stored
     List<String> lUsers;  // List of crpx
     
@@ -144,7 +148,7 @@ public class CrpManager {
           // Is this the user we are looking for?
           if (sUserId.isEmpty() || sUser.equals(sUserId)) {
             // Get all the CRP files in the user's directory
-            DirectoryStream<Path> streamCrp = Files.newDirectoryStream(pathUser, "*.crpx");
+            DirectoryStream<Path> streamCrp = Files.newDirectoryStream(pathUser, sFileName);
             for (Path pathCrp : streamCrp) {
               // Get the name of this crp
               String sCrp = pathCrp.getFileName().toString();
@@ -165,7 +169,8 @@ public class CrpManager {
                 oData.put("userid", sUser);
                 oData.put("crp", sCrp);
                 oData.put("loaded", bLoaded);
-                oData.put("file", pathCrp.toString());
+                String sCrpPath = pathCrp.toString();
+                oData.put("file", sCrpPath);
                 // Include the object here
                 arList.add(oData);
               }

@@ -78,7 +78,7 @@ public class RequestHandlerCrpSet extends RequestHandler {
       if (!sCrpName.endsWith(".crpx")) sCrpName += ".crpx";
       if (!bOverwrite) {
         // Get a list of all this user's CRPs satisfying the name condition
-        DataObjectList arCrpList = (DataObjectList) crpManager.getCrpList( sCurrentUserId, sCrpName);
+        DataObjectList arCrpList = (DataObjectList) crpManager.getCrpList( sCurrentUserId, "", sCrpName);
         // Check if
         if (!arCrpList.isEmpty()) {
           return DataObject.errorObject("overwrite", 

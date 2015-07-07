@@ -1,6 +1,8 @@
 package nl.ru.crpx.server.requesthandlers;
 
+import java.io.File;
 import javax.servlet.http.HttpServletRequest;
+import nl.ru.crpx.dataobject.DataFormat;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
@@ -65,15 +67,22 @@ public class RequestHandlerCrpGet extends RequestHandler {
       // Check if this has the .crpx ending
       if (!sCrpName.endsWith(".crpx")) sCrpName += ".crpx";
       // Get a list of all this user's CRPs satisfying the name condition
-      DataObjectList arCrpList = (DataObjectList) crpManager.getCrpList( sCurrentUserId, sCrpName);
+      DataObjectList arCrpList = (DataObjectList) crpManager.getCrpList( sCurrentUserId, "", sCrpName);
       // Check the result
       if (arCrpList.isEmpty()) {
         return DataObject.errorObject("not_found", 
           "The .crpx file requested is not available.");
       } 
+      // Locate the file
+      JSONObject oFirst = new JSONObject(arCrpList.get(0).toString(DataFormat.JSON));
+      String sCrpPath = oFirst.getString("file");
+      File fCrpPath = new File(sCrpPath);
+      if (!fCrpPath.exists()) return DataObject.errorObject("not_found",
+              "Could not find the .crpx file at: ["+sCrpPath+"].");
+
       // Load and prepare the content
       DataObjectMapElement objContent = new DataObjectMapElement();
-      objContent.put("crp", FileUtil.readFile(arCrpList.get(0).toString()));
+      objContent.put("crp", FileUtil.readFile(fCrpPath));
       
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
