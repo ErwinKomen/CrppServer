@@ -228,6 +228,12 @@ public abstract class RequestHandler {
         case "statusxq":  // Opvragen status XqJob
           requestHandler = new RequestHandlerStatusXq(servlet, request, indexName);
           break;
+        case "crpget":    // Send CRP from /crpp to requester
+          requestHandler = new RequestHandlerCrpGet(servlet, request, indexName);
+          break;
+        case "crpset":    // Requester sends a CRP to the /crpp
+          requestHandler = new RequestHandlerCrpSet(servlet, request, indexName);
+          break;
         case "serverinfo":  // Information about corpora
           requestHandler = new RequestHandlerServerInfo(servlet, request, indexName);
           break;
