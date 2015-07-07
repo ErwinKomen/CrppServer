@@ -165,6 +165,7 @@ public class CrpManager {
                 oData.put("userid", sUser);
                 oData.put("crp", sCrp);
                 oData.put("loaded", bLoaded);
+                oData.put("file", pathCrp.toString());
                 // Include the object here
                 arList.add(oData);
               }
