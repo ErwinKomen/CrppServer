@@ -74,7 +74,7 @@ public class CrpUser {
 
     try {
       // Create room for a corpus research project
-      CorpusResearchProject crpThis = new CorpusResearchProject();
+      CorpusResearchProject crpThis = new CorpusResearchProject(true);
       // Set output and query directory, depending on the user
       sOutputDir = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/out");
       sQueryDir = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/xq");
