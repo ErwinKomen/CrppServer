@@ -1,12 +1,14 @@
 package nl.ru.crpx.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.Part;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.util.FileUtil;
+import nl.ru.util.IoUtil;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
 
@@ -27,6 +29,7 @@ import org.apache.log4j.Logger;
  *    name    - name of the crpx (with or without postfix .crpx)
  *    userid  - name of the user under which the .crpx is stored
  *    crp     - the xml text of the crpx file
+ *    overwrite - boolean indicating that we may overwrite an existing copy
  * 
  * @author Erwin R. Komen
  */
@@ -47,26 +50,44 @@ public class RequestHandlerCrpSet extends RequestHandler {
   @Override
   public DataObject handle() {
     boolean bOverwrite = true;
+    String sCrpText = "";
     try {
       debug(logger, "REQ crpset");
-      // Get the JSON string argument we need to process, e.g:
+      // We are expecting a 'multipart' request consisting of two parts:
+      //  "query" - a stringified JSON object (see below)
+      //  "file"  - a file
+      //
+      // The JSON object "query" consists of:
       //   {  "userid": "erkomen",
       //      "crp":    "<crp>...</crp>",
       //      "name":   "ParticleA.crpx",
       //      "overwrite": true}
-      // Note: if no user is given, then we should give all users and all crp's
-      sReqArgument = getReqString(request);
+      logger.debug("Parts: " + request.getParts().size());
+      for (Part prtThis : request.getParts()) {
+        // Check which part this is
+        switch (prtThis.getName()) {
+          case "query": // the JSON object
+            logger.debug("Reading [query] part");
+            sReqArgument = IoUtil.readStream(prtThis.getInputStream());
+            break;
+          case "file":
+            logger.debug("Reading [file] part");
+            sCrpText = IoUtil.readStream(prtThis.getInputStream());
+            break;
+        }
+      }
       logger.debug("Considering request /crpset: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       if (!jReq.has("userid")) return DataObject.errorObject("syntax", 
           "The /crpset request must contain: userid.");
       sCurrentUserId = jReq.getString("userid");
-      // Check for the xml text, stored in "crp"
-      String sCrpText = "";
-      if (!jReq.has("crp")) return DataObject.errorObject("syntax", 
-          "The /crpset request must contain: crp.");
-      sCrpText = jReq.getString("crp");
+      // ======= Debugging ============
+      logger.debug("The crp contains:");
+      logger.debug(sCrpText);
+      logger.debug("================");
+      // ==============================
+      
       // Possibly get overwrite parameter
       if (jReq.has("overwrite")) bOverwrite = jReq.getBoolean("overwrite");
       // Check for the name of the crpx
