@@ -9,6 +9,7 @@ import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.util.FileUtil;
 import nl.ru.util.IoUtil;
+import static nl.ru.util.StringUtil.unescapeHexCoding;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
 
@@ -62,26 +63,17 @@ public class RequestHandlerCrpSet extends RequestHandler {
       //      "crp":    "<crp>...</crp>",
       //      "name":   "ParticleA.crpx",
       //      "overwrite": true}
-      logger.debug("Parts: " + request.getParts().size());
-      for (Part prtThis : request.getParts()) {
-        // Check which part this is
-        switch (prtThis.getName()) {
-          case "query": // the JSON object
-            logger.debug("Reading [query] part");
-            sReqArgument = IoUtil.readStream(prtThis.getInputStream());
-            break;
-          case "file":
-            logger.debug("Reading [file] part");
-            sCrpText = IoUtil.readStream(prtThis.getInputStream());
-            break;
-        }
-      }
+      sReqArgument = getReqString(request);
       logger.debug("Considering request /crpset: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       if (!jReq.has("userid")) return DataObject.errorObject("syntax", 
           "The /crpset request must contain: userid.");
       sCurrentUserId = jReq.getString("userid");
+      // Get the CRP text
+      if (!jReq.has("crp"))return DataObject.errorObject("syntax", 
+          "The /crpset request must contain: crp.");
+      sCrpText = unescapeHexCoding(jReq.getString("crp"));
       // ======= Debugging ============
       logger.debug("The crp contains:");
       logger.debug(sCrpText);
@@ -112,8 +104,8 @@ public class RequestHandlerCrpSet extends RequestHandler {
       FileUtil.writeFile(sProjectPath, sCrpText, "utf-8");
       
       // Content part
-       DataObjectMapElement objContent = new DataObjectMapElement();
-       objContent.put("name", sCrpName);
+      DataObjectMapElement objContent = new DataObjectMapElement();
+      objContent.put("name", sCrpName);
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
       objStatus.put("code", "completed");
