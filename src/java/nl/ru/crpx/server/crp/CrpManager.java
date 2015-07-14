@@ -7,16 +7,13 @@
  */
 package nl.ru.crpx.server.crp;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import nl.ru.crpx.dataobject.DataFormat;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
@@ -25,8 +22,6 @@ import nl.ru.crpx.server.CrpPserver;
 import static nl.ru.crpx.server.crp.CrpUser.sProjectBase;
 import nl.ru.crpx.tools.ErrHandle;
 import nl.ru.util.FileUtil;
-import nl.ru.util.json.JSONArray;
-import nl.ru.util.json.JSONObject;
 
 /**
  * CrpManager
@@ -130,6 +125,7 @@ public class CrpManager {
     try {
       // Create a list to reply
       DataObjectList arList = new DataObjectList("crplist");
+      // List<DataObject> lSorted = new ArrayList<>();
       
       // Get a path to the users
       sUserPath = FileUtil.nameNormalize(sProjectBase);
@@ -173,6 +169,7 @@ public class CrpManager {
                 oData.put("file", sCrpPath);
                 // Include the object here
                 arList.add(oData);
+                // lSorted.add(oData);
               }
             }
           }
@@ -180,6 +177,24 @@ public class CrpManager {
       } catch(IOException ex) {
         errHandle.DoError("Could not get a list of CRP-User objects", ex, CrpManager.class);
       }
+      /*
+      // Sor the arraylist
+      Comparator c = new Comparator() {
+
+        @Override
+        public int compare(Object t, Object t1) {
+          DataObjectMapElement o1 = (DataObjectMapElement) t;
+          DataObjectMapElement o2 = (DataObjectMapElement) t1;
+          return o1.get("crp").toString().compareTo(o2.get("crp").toString());
+        }
+      };
+      // Sort it
+      Collections.sort(lSorted, c);
+      // Convert ArrayList to DataObjectList
+      arList.addAll(lSorted);
+      */
+      // Sort the result
+      arList.sort("crp");
       // Return the array
       return arList;
     } catch (Exception ex) {
