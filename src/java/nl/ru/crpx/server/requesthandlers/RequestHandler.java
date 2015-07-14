@@ -234,6 +234,9 @@ public abstract class RequestHandler {
         case "crpset":    // Requester sends a CRP to the /crpp
           requestHandler = new RequestHandlerCrpSet(servlet, request, indexName);
           break;
+        case "crpdel":    // Remove a CRP on the /crpp server side
+          requestHandler = new RequestHandlerCrpDel(servlet, request, indexName);
+          break;
         case "serverinfo":  // Information about corpora
           requestHandler = new RequestHandlerServerInfo(servlet, request, indexName);
           break;
