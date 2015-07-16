@@ -207,26 +207,11 @@ public abstract class RequestHandler {
       // Choose the RequestHandler subclass
       RequestHandler requestHandler = null;
       switch (indexName) {
-        case "debug":
-          requestHandler = new RequestHandlerDebug(servlet, request, indexName);
-          break;
-        case "load":    // Laden van een CRP voor een gebruiker
-          requestHandler = new RequestHandlerLoad(servlet, request, indexName);
-          break;
         case "crplist": // List available CRPs for one or all user(s)
           requestHandler = new RequestHandlerCrpList(servlet, request, indexName);
           break;
-        case "save":    // Opslaan van een CRP voor een gebruiker
-          requestHandler = new RequestHandlerSave(servlet, request, indexName);
-          break;
-        case "show":    // A summary of the details of the indicated CRP
-          requestHandler = new RequestHandlerShow(servlet, request, indexName);
-          break;
-        case "execute": case "exe": // Uitvoeren van een CRP
-          requestHandler = new RequestHandlerExecute(servlet, request, indexName);
-          break;
-        case "statusxq":  // Opvragen status XqJob
-          requestHandler = new RequestHandlerStatusXq(servlet, request, indexName);
+        case "crpdel":    // Remove a CRP on the /crpp server side
+          requestHandler = new RequestHandlerCrpDel(servlet, request, indexName);
           break;
         case "crpget":    // Send CRP from /crpp to requester
           requestHandler = new RequestHandlerCrpGet(servlet, request, indexName);
@@ -234,11 +219,29 @@ public abstract class RequestHandler {
         case "crpset":    // Requester sends a CRP to the /crpp
           requestHandler = new RequestHandlerCrpSet(servlet, request, indexName);
           break;
-        case "crpdel":    // Remove a CRP on the /crpp server side
-          requestHandler = new RequestHandlerCrpDel(servlet, request, indexName);
+        case "debug":
+          requestHandler = new RequestHandlerDebug(servlet, request, indexName);
+          break;
+        case "execute": case "exe": // Uitvoeren van een CRP
+          requestHandler = new RequestHandlerExecute(servlet, request, indexName);
+          break;
+        case "load":    // Laden van een CRP voor een gebruiker
+          requestHandler = new RequestHandlerLoad(servlet, request, indexName);
+          break;
+        case "save":    // Opslaan van een CRP voor een gebruiker
+          requestHandler = new RequestHandlerSave(servlet, request, indexName);
           break;
         case "serverinfo":  // Information about corpora
           requestHandler = new RequestHandlerServerInfo(servlet, request, indexName);
+          break;
+        case "show":    // A summary of the details of the indicated CRP
+          requestHandler = new RequestHandlerShow(servlet, request, indexName);
+          break;
+        case "statusxq":  // Opvragen status XqJob
+          requestHandler = new RequestHandlerStatusXq(servlet, request, indexName);
+          break;
+        case "update":      // getting detailed information
+          requestHandler = new RequestHandlerUpdate(servlet, request, indexName);
           break;
         case "":
           // Empty index name means request for information

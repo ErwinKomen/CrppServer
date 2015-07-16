@@ -25,17 +25,17 @@ import nl.ru.util.FileUtil;
 
 /**
  * CrpManager
- * Manage the CRP projects that are worked on by the different users
+ *    Manage the CRP projects that are worked on by the different users
  * 
  * @author Erwin R. Komen
  */
 public class CrpManager {
   // ================ Local variables ==========================================
-  ErrHandle errHandle;            // The error handler we are using
+  ErrHandle errHandle;                  // The error handler we are using
   // ================ Static variables =========================================
   static List<CrpUser> loc_crpUserList; // List of CrpUser elements
   static int loc_id;                    // the Id of each CrpUser element
-  static CrpPserver servlet;       // My own link to the search manager
+  static CrpPserver servlet;            // My own link to the search manager
   // ================ Class initialisation =====================================
   public CrpManager(CrpPserver servlet, ErrHandle errHandle) {
     // Initialize the id
@@ -88,7 +88,6 @@ public class CrpManager {
    * Retrieve (or load) the CRP belonging to the indicated project name, language and user
    * 
    * @param sProjectName
-   * @param sLngIndex
    * @param sUserId
    * @return 
    */
