@@ -141,26 +141,12 @@ public class RequestHandlerExecute extends RequestHandler {
         // Add the project name as parameter (but not as "query"!!!)
         this.searchParam.put("name", sCrpName);
 
-        // Get the directory associated with the Language Index
-        File fDir = servlet.getSearchManager().getIndexDir(sLng);
-        if (fDir==null) return DataObject.errorObject("INTERNAL_ERROR", 
-                  "No language directory associated with [" + sLng + "]");
-        // We need the directory as a string
-        String sTarget = fDir.getAbsolutePath();
-        // Get a sub directory or focus file
-        if (!sFocus.isEmpty()) {
-          // Locate this part 'under' the language index directory
-          Path pStart = Paths.get(sTarget);
-          List<String> lInputFiles = new ArrayList<>();
-          FileUtil.getFileNames(lInputFiles, pStart, sFocus);
-          // Validate result
-          if (lInputFiles.isEmpty()) 
-            return DataObject.errorObject("INTERNAL_ERROR", 
-                    "Cannot find input file for language [" + sLng + "] and dir=[" + sFocus + "]\n" + 
-                    "Looking in: " + pStart.toString());
-          // If anything comes out, then take only the *FIRST* hit!!!!
-          sTarget = lInputFiles.get(0);
-        }
+        // Get the directory associated with "lng" and "dir"
+        String sTarget = servlet.getSearchManager().getCorpusPartDir(sLng, sFocus);
+        // Validate
+        if (sTarget.isEmpty()) 
+           return DataObject.errorObject("INTERNAL_ERROR", 
+                    "Cannot find input file for language [" + sLng + "] and dir=[" + sFocus + "]");
         // Set the correct source 
         prjThis.setSrcDir(new File(sTarget));
         

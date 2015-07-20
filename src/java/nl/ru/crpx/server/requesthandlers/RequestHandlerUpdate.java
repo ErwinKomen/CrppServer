@@ -1,15 +1,25 @@
 package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
+import java.util.List;
 import javax.servlet.http.HttpServletRequest;
+import net.sf.saxon.s9api.DocumentBuilder;
+import net.sf.saxon.s9api.Processor;
+import net.sf.saxon.s9api.QName;
 import nl.ru.crpx.dataobject.DataObject;
+import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
+import nl.ru.crpx.project.CorpusResearchProject.ProjType;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
+import nl.ru.crpx.xq.English;
 import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
+import nl.ru.xmltools.XmlDocument;
+import nl.ru.xmltools.XmlIndexReader;
+import nl.ru.xmltools.XmlNode;
 import org.apache.log4j.Logger;
 
 /*
@@ -27,14 +37,16 @@ import org.apache.log4j.Logger;
  *    been executed. The kind of information to be provided depends on the 
  *    parameters passed on here:
  * 
- *    userid  name under which the data is stored
- *    crp     name of the CRP
- *    start   which hit number to start with
- *    count   the total number of hits to be returned
- *    type    the kind of information needed:
- *            "hits"    - provide list of: file / forestId / hit text
- *            "context" - provide list of: pre / text / post
- *            "syntax"  - provide list of: psd-tree
+ *      userid  name under which the data is stored
+ *      crp     name of the CRP
+ *      lng     the language on which the CRP has been run
+ *      dir     the part of the language (corpus specification)
+ *      start   which hit number to start with
+ *      count   the total number of hits to be returned
+ *      type    the kind of information needed:
+ *              "hits"    - provide list of: file / forestId / hit text
+ *              "context" - provide list of: pre / text / post
+ *              "syntax"  - provide list of: psd-tree
  * 
  * @author  Erwin R. Komen
  * @history 16/jul/2015 created
@@ -45,6 +57,13 @@ public class RequestHandlerUpdate extends RequestHandler {
   private static final Logger logger = Logger.getLogger(RequestHandlerUpdate.class);
   // =================== Local variables =======================================
   private CrpManager crpManager;
+  private Processor objSaxon;               // Local access to the processor
+  private DocumentBuilder objSaxDoc;        // My own document-builder
+  private XmlIndexReader objXmlRdr=null;    // Index reader for current file
+  private File objCurrentFile = null;       // File we are working on now
+  private String loc_xpWords = "";          // Xpath expression to get to the words
+  private ProjType iPrjType;                // Type of current project (psdx/folia...)
+  private static final QName loc_attr_LeafText = new QName("", "", "Text");
 
   // =================== Initialisation of this class ==========================
   public RequestHandlerUpdate(CrpPserver servlet, HttpServletRequest request, String indexName) {
@@ -62,6 +81,8 @@ public class RequestHandlerUpdate extends RequestHandler {
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen",  // user
       //      "crp": "bladi.crpx",  // name of corpus research project
+      //      "lng": "eng_hist",    // language from which data is processed
+      //      "dir": "ME",          // part of the language corpus being accessed
       //      "start": 20,          // index of first hit
       //      "count": 50,          // number of hits (within the category)
       //      "qc": 3,              // QC line number
@@ -75,23 +96,37 @@ public class RequestHandlerUpdate extends RequestHandler {
       JSONObject jReq = new JSONObject(sReqArgument);
       // Validate obligatory parameters
       if (!jReq.has("userid") || !jReq.has("crp") || !jReq.has("start") || 
-              !jReq.has("count") || !jReq.has("type") || !jReq.has("qc"))
+              !jReq.has("count") || !jReq.has("type") || !jReq.has("qc") ||
+              !jReq.has("lng") || !jReq.has("dir"))
         return DataObject.errorObject("update syntax", 
-              "One of the parameters is missing: userid, crp, start, count, type ");
+              "One of the parameters is missing: userid, crp, start, count, type, qc, lng, dir ");
       
       // Now extract the obligatory parameters
       sCurrentUserId = jReq.getString("userid");
       String sCrpName = jReq.getString("crp");
+      String sLngName = jReq.getString("lng");
+      String sLngPart = jReq.getString("dir");
       int iUpdStart = jReq.getInt("start");
       int iUpdCount = jReq.getInt("count");
       String sUpdType = jReq.getString("type");
       int iQC = jReq.getInt("qc");
       
-      // Deal with the two optional parameters
+      // Deal with the optional parameter(s)
       if (jReq.has("sub")) sSub = jReq.getString("sub");
       
       // Get access to the indicated CRP
       CorpusResearchProject crpThis = crpManager.getCrp(sCrpName, sCurrentUserId);
+      
+      // Keep the project type
+      this.iPrjType = crpThis.intProjType;
+      
+      // Get Access to Saxon
+      this.objSaxon = crpThis.getSaxProc();
+      this.objSaxDoc = this.objSaxon.newDocumentBuilder();
+      // Initialize access to a document associated with this CRP
+      XmlDocument pdxThis = new XmlDocument(this.objSaxDoc, this.objSaxon);
+      
+
       // Read the table.json file so that we know where what is
       String sTableLoc = crpThis.getDstDir() + "/" + crpThis.getName() + ".table.json";
       JSONArray arTable = new JSONArray(FileUtil.readFile(sTableLoc));
@@ -99,14 +134,21 @@ public class RequestHandlerUpdate extends RequestHandler {
       // Get a JSON Array that specifies the position where we can find the data
       JSONArray arHitLocInfo = getHitFileInfo(crpThis, arTable, iQC, sSub, iUpdStart, iUpdCount);
 
+      // Get the directory where corpus files must be found
+      String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
+      
       // Start an array with the required results
-      JSONArray arHitDetails = new JSONArray();
+      // JSONArray arHitDetails = new JSONArray();
+      DataObjectList arHitDetails = new DataObjectList("content");
+      String sLastFile = ""; String sOneSrcFilePart = "";
       // Start gathering the results
       for (int i=0;i<iUpdCount; i++) {
         // Calculate the number we are looking for
         int iHitNumber = iUpdStart + i;
-        JSONObject oHitDetails = new JSONObject();
-        oHitDetails.put("n", i);
+        // Start storing the details of this hit
+        DataObjectMapElement oHitDetails = new DataObjectMapElement();
+        //JSONObject oHitDetails = new JSONObject();
+        oHitDetails.put("n", iHitNumber);
         // Get the entry from hitlocinfo
         JSONObject oHitLocInfo = arHitLocInfo.getJSONObject(i);
         String sOneSrcFile = oHitLocInfo.getString("file");
@@ -116,12 +158,22 @@ public class RequestHandlerUpdate extends RequestHandler {
         oHitDetails.put("locs", sLocs);
         oHitDetails.put("locw", sLocw);
         if (oHitLocInfo.has("msg")) oHitDetails.put("msg", oHitLocInfo.getString("msg"));
-        // Construct the target file name
-        String sOneSrcFilePart = "";
+        // Do we have this file already?
+        if (sLastFile.isEmpty() || !sLastFile.equals(sOneSrcFile)) {
+          // Construct the target file name
+          sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sOneSrcFile);
+          sLastFile = sOneSrcFile;
+        }
+        // Get access to the XML sentence belonging to this @locs
+        XmlNode ndxForest = getOneSentence(crpThis, pdxThis, sOneSrcFilePart, sLocs);
         
         // Get the information needed for /update
         switch(sUpdType) {
           case "hits":    // Per hit: file // forestId // ru:back() text
+            JSONObject oHitInfo = getHitLine(sLngName, ndxForest, sLocw);
+            oHitDetails.put("pre", oHitInfo.getString("pre"));
+            oHitDetails.put("hit", oHitInfo.getString("hit"));
+            oHitDetails.put("fol", oHitInfo.getString("fol"));
             break;
           case "context": // Per hit the contexts: pre // clause // post
             break;
@@ -131,25 +183,22 @@ public class RequestHandlerUpdate extends RequestHandler {
             break;
         }
         // Add the acquired JSONObject with info about this line
-        arHitDetails.put(oHitDetails);
+        arHitDetails.add(oHitDetails);
       }
-      
-      // Load the content for this user
-      DataObject objContent = null;
       
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
       objStatus.put("code", "completed");
-      objStatus.put("message", "See the list of CRPs in the [content] section");
+      objStatus.put("message", "See the information in the [content] section");
       objStatus.put("userid", userId);
       // Prepare the total response: indexName + status object
       DataObjectMapElement response = new DataObjectMapElement();
       response.put("indexName", indexName);
-      response.put("content", objContent);
+      response.put("content", arHitDetails);
       response.put("status", objStatus);
       return response;
     } catch (Exception ex) {
-      errHandle.DoError("Providing a CRP list failed", ex, RequestHandlerUpdate.class);
+      errHandle.DoError("Providing /update information failed", ex, RequestHandlerUpdate.class);
       return null;
     }
   }
@@ -174,8 +223,8 @@ public class RequestHandlerUpdate extends RequestHandler {
     int iUpdCurrent;      // Item we are looking for now
     int iUpdFinish;       // Last entry to be taken (starting with 0)
     int iNumber = 0;      // The result number we have found so far
-    int iEntryFirst = 0;  // First entry in batch (starting with 0)
-    int iEntryLast = 0;   // Laste entry in batch (starting with 0)
+    int iEntryFirst = -1; // Total result count number: first entry in batch (starting with 0)
+    int iEntryLast = -1;  // Total result count number: Last entry in batch (starting with 0)
     int iSubCat = -1;     // Index of the subcat (if specified)
     
     try {
@@ -210,11 +259,18 @@ public class RequestHandlerUpdate extends RequestHandler {
         // Access this entry as object
         JSONObject oQCentry = (JSONObject) arQClist.get(j);
         // Calculate where we are in terms of hit numbers
-        iEntryFirst = iEntryLast;
-        if (iSubCat<0)
-          iEntryLast = iEntryFirst + oQCentry.getInt("count");
-        else
-          iEntryLast = iEntryFirst + oQCentry.getJSONArray("subs").getInt(iSubCat);
+        if (iSubCat<0) {
+          if (oQCentry.getInt("count")>0) {
+            iEntryFirst = iEntryLast + 1;
+            iEntryLast = iEntryFirst + oQCentry.getInt("count")-1;
+          }
+        } else {
+          int iSubCatCount = oQCentry.getJSONArray("subs").getInt(iSubCat);
+          if (iSubCatCount>0) {
+            iEntryFirst = iEntryLast + 1;
+            iEntryLast = iEntryFirst + oQCentry.getJSONArray("subs").getInt(iSubCat)-1;
+          }
+        }
         // should we process this entry?
         while (iUpdCurrent >= iEntryFirst && iUpdCurrent <= iEntryLast && 
                 iUpdCurrent <= iUpdFinish) {
@@ -228,7 +284,7 @@ public class RequestHandlerUpdate extends RequestHandler {
           oAdd.put("qc", iQC);
           oAdd.put("sub", sSub);
           // Get the 'locs', 'locw', 'cat' and 'msg' for this entry
-          // (1) Open this file?
+          // (1) Open this file in order to get information from it?
           String sLastPart = "/" + sFileName + ".hits";
           if (sHitFile.isEmpty() || !sHitFile.contains(sLastPart)) {
             sHitFile = crpThis.getHitsDir() + sLastPart;
@@ -238,48 +294,47 @@ public class RequestHandlerUpdate extends RequestHandler {
             // Read the file into a JSON array
             JSONObject oHitF = new JSONObject(FileUtil.readFile(fThis));
             JSONArray arHitF = oHitF.getJSONArray("hits");
-            // Get to the results part
-            arRes = ((JSONObject) arHitF.get(iQC-1)).getJSONArray("results");
+            // Get to the results part of this QC combined with possible subcat
+            if (sSub.isEmpty()) {
+              // It is sufficient to get the "results" array from the indicated QC
+              arRes = ((JSONObject) arHitF.get(iQC-1)).getJSONArray("results");
+            } else {
+              // First get the "percat" array of the indicated QC
+              JSONArray arPerCat = ((JSONObject) arHitF.get(iQC-1)).getJSONArray("percat");
+              arRes = null;
+              // Walk this array looking for the correct subcat
+              for (int k=0;k<arPerCat.length();k++) {
+                // Access this 'percat' element
+                JSONObject oPerCat = arPerCat.getJSONObject(k);
+                // Does this 'percat' element involve our requested sub-category?
+                if (oPerCat.getString("cat").equals(sSub)) {
+                  // Found it!
+                  arRes = oPerCat.getJSONArray("results");
+                  // get out of the loop
+                  break;
+                }
+              }
+            }
             // Initialize the result index
             iResIdx = 0;
             // Reset the 'lastk' variable
             iLastK = 0;
           }
-          // (2) validate
-          if (arRes == null) return null;
-          // (3) Move the result-index to the required iOffset
-          if (sSub.isEmpty()) {
+          // (2) validate: we can only continue if there are any results in this file
+          if (arRes != null && arRes.length()>0) {
+            // (3) Move the result-index to the required iOffset
             // The result index is straight-forward the index of the [results] array
             JSONObject oOneRes = arRes.getJSONObject(iOffset);
             oAdd.put("locs", oOneRes.getString("locs"));
             oAdd.put("locw", oOneRes.getString("locw"));
             if (oOneRes.has("msg"))
               oAdd.put("msg", oOneRes.getString("msg"));
-          } else {
-            // Find the 'iOffset's entry from subcategory 'sSub'
-            for (int k=iLastK; k < arRes.length(); k++) {
-              // Keep track of the last offset
-              iLastK = k+1;
-              // Get this entry
-              JSONObject oOneRes = arRes.getJSONObject(k);
-              if (oOneRes.getString("cat").equals(sSub)) {
-                iResIdx++;
-                if (iResIdx == iOffset) {
-                  // Process this one
-                  oAdd.put("locs", oOneRes.getString("locs"));
-                  oAdd.put("locw", oOneRes.getString("locw"));
-                  if (oOneRes.has("msg"))
-                    oAdd.put("msg", oOneRes.getString("msg"));                  
-                  break;
-                }
-              }
-            }
+            // Add this entry to the results
+            arBack.put(oAdd);
+            // Continue until we have received all that is needed
+            iUpdCurrent++;
           }
-          
-          // Add this entry to the results
-          arBack.put(oAdd);
-          // Continue until we have received all that is needed
-          iUpdCurrent++;
+
         }
         // Check: if we are ready, we can leave
         if (iUpdCurrent > iUpdFinish) break;
@@ -292,4 +347,211 @@ public class RequestHandlerUpdate extends RequestHandler {
       return null;
     }
   }
+  
+  /**
+   * getOneSentence
+   *    Find the sentence for the indicated file
+   * 
+   * @param sSentId
+   * @return 
+   */
+  private XmlNode getOneSentence(CorpusResearchProject crpThis, XmlDocument pdxDoc,
+          String sFileName, String sSentId) {
+    
+    try {
+      // Get access to the correct xml index reader
+      if (objXmlRdr == null || !objXmlRdr.getFileName().equals(sFileName)) {
+        objCurrentFile = new File(sFileName);
+        this.objXmlRdr = new XmlIndexReader(objCurrentFile, crpThis, pdxDoc);
+      }
+      // Get the String representation 
+      String sSentLine = objXmlRdr.getOneLine(sSentId);
+      // Convert this into an XmlNode
+      pdxDoc.LoadXml(sSentLine);
+      return new XmlNode(pdxDoc.getNode(), this.objSaxon);
+    } catch (Exception ex) {
+      errHandle.DoError("getOneSentence failed", ex, RequestHandlerUpdate.class);
+      return null;
+    }
+  }
+  
+  /**
+   * getHitLine
+   *    Given the sentence in [ndxSentence] get a JSON representation of 
+   *    this sentence that includes:
+   *    { 'pre': 'text preceding the hit',
+   *      'hit': 'the hit text',
+   *      'fol': 'text following the hit'}
+   * 
+   * @param ndxSentence
+   * @param sLocw
+   * @return 
+   */
+  private JSONObject getHitLine(String sLngName, XmlNode ndxSentence, String sLocw) {
+    JSONObject oBack = new JSONObject();
+    String sPre = "";
+    String sHit = "";
+    String sFol = "";
+    
+    try {
+      // Get word nodes of the whole sentence
+      List<XmlNode> arWords = ndxSentence.SelectNodes(getXpathWordsOfSent());
+      // Walk the results
+      int i=0;
+      // Get the preceding context
+      while(i < arWords.size() && arWords.get(i).SelectSingleNode(getXpathHasAnc("id", sLocw)) == null) {
+        // Double check for CODE ancestor
+        if (arWords.get(i).SelectSingleNode(getXpathHasAnc("pos", "CODE")) == null )
+          sPre += getOneWord(arWords.get(i)) + " ";
+        i++;
+      }
+      // Get the hit context
+      while(i < arWords.size() && arWords.get(i).SelectSingleNode(getXpathHasAnc("id", sLocw)) != null) {
+        // Double check for CODE ancestor
+        if (arWords.get(i).SelectSingleNode(getXpathHasAnc("pos", "CODE")) == null )
+          sHit += getOneWord(arWords.get(i)) + " ";
+        i++;
+      }
+      // Get the following context
+      while(i < arWords.size() && arWords.get(i).SelectSingleNode(getXpathHasAnc("id", sLocw)) == null) {
+        // Double check for CODE ancestor
+        if (arWords.get(i).SelectSingleNode(getXpathHasAnc("pos", "CODE")) == null )
+          sFol += getOneWord(arWords.get(i)) + " ";
+        i++;
+      }
+      // Possible corrections depending on language
+      switch(sLngName) {
+        case "eng_hist":
+          // Convert OE symbols
+          sPre = English.VernToEnglish(sPre);
+          sHit = English.VernToEnglish(sHit);
+          sFol = English.VernToEnglish(sFol);
+          break;
+      }
+      
+      // Construct object
+      oBack.put("pre", sPre.trim());
+      oBack.put("hit", sHit.trim());
+      oBack.put("fol", sFol.trim());
+      return oBack;
+    } catch (Exception ex) {
+      errHandle.DoError("getHitLine failed", ex, RequestHandlerUpdate.class);
+      return null;
+    }
+  }
+  
+  /**
+   * getOneWord
+   *    Given a node to a word, return the word string contained by that node
+   * 
+   * @param ndxWord
+   * @return 
+   */
+  private String getOneWord(XmlNode ndxWord) {
+    String sBack = "";
+    
+    // Validate
+    if (ndxWord == null || ndxWord.isAtomicValue()) return "";
+    // Determine how to get to the words
+    switch (iPrjType) {
+      case ProjPsdx:
+        sBack = ndxWord.getAttributeValue(loc_attr_LeafText);
+        break;
+      case ProjFolia:
+        sBack = "";
+        break;
+      case ProjAlp:
+      case ProjPsd:
+      case ProjNegra:
+      default: 
+       sBack = "";
+    }
+    return sBack;    
+  }
+  /**
+   * getXpathWordsOfHit
+   *    Get the Xpath expression to identify words of the hit
+   * 
+   * @param sLocw
+   * @return 
+   */
+  private String getXpathWordsOfHit(String sLocw) {
+    String sBack = "";
+    // Determine how to get to the words
+    switch (iPrjType) {
+      case ProjPsdx:
+        sBack = "./descendant::eLeaf[ancestor::eTree[@Id = " + sLocw + 
+                "] and (@Type = 'Vern' or @Type = 'Punct')]";
+        break;
+      case ProjFolia:
+        sBack = "";
+        break;
+      case ProjAlp:
+      case ProjPsd:
+      case ProjNegra:
+      default: 
+       sBack = "";
+    }
+    return sBack;
+  }
+  
+  /**
+   * getXpathWordsOfSent
+   *    Get the Xpath expression to identify words of the sentence
+   * 
+   * @return 
+   */
+  private String getXpathWordsOfSent() {
+    String sBack = "";
+    // Determine how to get to the words
+    switch (iPrjType) {
+      case ProjPsdx:
+        sBack = "./descendant::eLeaf[(@Type = 'Vern' or @Type = 'Punct')]";
+        break;
+      case ProjFolia:
+        sBack = "";
+        break;
+      case ProjAlp:
+      case ProjPsd:
+      case ProjNegra:
+      default: 
+       sBack = "";
+    }
+    return sBack;
+  }
+
+  /**
+   * getXpathHasAnc
+   *    Get the Xpath expression to find an ancestor of the current
+   *    node with a particular @id
+   * 
+   * @param sLocw
+   * @return 
+   */
+  private String getXpathHasAnc(String sType, String sValue) {
+    String sBack = "";
+    // Determine how to get to the words
+    switch (iPrjType) {
+      case ProjPsdx:
+        switch (sType) {
+          case "id":
+            sBack = "./ancestor::eTree[@Id = " + sValue + "] ";
+            break;
+          case "pos":
+            sBack = "./ancestor::eTree[@Label = '" + sValue + "'] ";
+            break;
+        }
+        break;
+      case ProjFolia:
+        sBack = "";
+        break;
+      case ProjAlp:
+      case ProjPsd:
+      case ProjNegra:
+      default: 
+       sBack = "";
+    }
+    return sBack;
+  }
+
 }
