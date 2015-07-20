@@ -2,7 +2,9 @@ package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
 import java.util.List;
+import java.util.logging.Level;
 import javax.servlet.http.HttpServletRequest;
+import javax.xml.xpath.XPathExpressionException;
 import net.sf.saxon.s9api.DocumentBuilder;
 import net.sf.saxon.s9api.Processor;
 import net.sf.saxon.s9api.QName;
@@ -168,14 +170,20 @@ public class RequestHandlerUpdate extends RequestHandler {
         XmlNode ndxForest = getOneSentence(crpThis, pdxThis, sOneSrcFilePart, sLocs);
         
         // Get the information needed for /update
+        JSONObject oHitInfo = null;
         switch(sUpdType) {
           case "hits":    // Per hit: file // forestId // ru:back() text
-            JSONObject oHitInfo = getHitLine(sLngName, ndxForest, sLocw);
+            oHitInfo = getHitLine(sLngName, ndxForest, sLocw);
             oHitDetails.put("pre", oHitInfo.getString("pre"));
             oHitDetails.put("hit", oHitInfo.getString("hit"));
             oHitDetails.put("fol", oHitInfo.getString("fol"));
             break;
           case "context": // Per hit the contexts: pre // clause // post
+            oHitInfo = getHitContext(sLngName, ndxForest, sLocw, 
+                    crpThis.getPrecNum(), crpThis.getFollNum());
+            oHitDetails.put("pre", oHitInfo.getString("pre"));
+            oHitDetails.put("hit", oHitInfo.getString("hit"));
+            oHitDetails.put("fol", oHitInfo.getString("fol"));
             break;
           case "syntax":  // Per hit: file // forestId // node syntax (psd-kind)
             break;
@@ -441,6 +449,66 @@ public class RequestHandlerUpdate extends RequestHandler {
   }
   
   /**
+   * getHitContext
+   *    Given the sentence in [ndxSentence] get a JSON representation of 
+   *    this sentence that includes:
+   *    { 'pre': 'text preceding the hit',
+   *      'hit': 'the hit text',
+   *      'fol': 'text following the hit'}
+
+   * @param sLngName
+   * @param ndxSentence
+   * @param sLocw
+   * @param iPrecNum
+   * @param iFollNum
+   * @return 
+   */
+  private JSONObject getHitContext(String sLngName, XmlNode ndxSentence, String sLocw, 
+          int iPrecNum, int iFollNum) {
+    XmlNode ndxWork;  // Working node
+    
+    try {
+      // Validate
+      if (ndxSentence == null) return null;
+      // Get the hit context of the target line
+      JSONObject oBack = getHitLine(sLngName, ndxSentence, sLocw);
+      String sPre = oBack.getString("pre");
+      String sFol = oBack.getString("fol");
+      // Get the preceding sentences
+      ndxWork = ndxSentence;
+      for (int i=0; i< iPrecNum; i++) {
+        // Try get preceding sentence
+        ndxWork = ndxWork.SelectSingleNode(getPrecSent());
+        // Got anything?
+        if (ndxWork != null) {
+          // Add this preceding context
+          sPre = "[" + "] " + getOneSent(ndxWork) + sPre;
+        }
+      }
+      // Get the following sentences
+      ndxWork = ndxSentence;
+      for (int i=0; i< iFollNum; i++) {
+        // Try get preceding sentence
+        ndxWork = ndxWork.SelectSingleNode(getFollSent());
+        // Got anything?
+        if (ndxWork != null) {
+          // Add this preceding context
+          sFol += "[" + "] " + getOneSent(ndxWork);
+        }
+      }
+      // Re-combine
+      oBack.put("pre", sPre);
+      oBack.put("fol", sFol);
+      
+      // Return our result
+      return oBack;
+    } catch (Exception ex) {
+      errHandle.DoError("getHitContext failed", ex, RequestHandlerUpdate.class);
+      return null;
+    }
+  }
+  
+  /**
    * getOneWord
    *    Given a node to a word, return the word string contained by that node
    * 
@@ -467,6 +535,40 @@ public class RequestHandlerUpdate extends RequestHandler {
        sBack = "";
     }
     return sBack;    
+  }
+  /**
+   * getOneSent
+   *    Given a node, get the sentence associated with that node
+   * 
+   * @param ndxThis
+   * @return 
+   */
+  private String getOneSent(XmlNode ndxThis) {
+    String sBack = "";
+      
+    try {
+      // Validate
+      if (ndxThis == null || ndxThis.isAtomicValue()) return "";
+      // Determine how to get to the words
+      switch (iPrjType) {
+        case ProjPsdx:
+          XmlNode ndxSeg = ndxThis.SelectSingleNode("./ancestor-or-self::forest/child::div[@lang='org']/child::seg");
+          sBack = ndxSeg.getNodeValue();
+          break;
+        case ProjFolia:
+          sBack = "";
+          break;
+        case ProjAlp:
+        case ProjPsd:
+        case ProjNegra:
+        default:
+          sBack = "";
+      }
+      return sBack;
+    } catch (Exception ex) {
+      errHandle.DoError("getOneSent failed", ex, RequestHandlerUpdate.class);
+      return "";
+    }
   }
   /**
    * getXpathWordsOfHit
@@ -554,4 +656,56 @@ public class RequestHandlerUpdate extends RequestHandler {
     return sBack;
   }
 
+  /**
+   * getPrecSent
+   *    Get access to the preceding sentence
+   * 
+   * @param ndxWord
+   * @return 
+   */
+  private String getPrecSent() {
+    String sBack = "";
+    
+    // Determine how to get to the words
+    switch (iPrjType) {
+      case ProjPsdx:
+        sBack = "./ancestor-or-self::forest/preceding-sibling::forest[1]";
+        break;
+      case ProjFolia:
+        sBack = "";
+        break;
+      case ProjAlp:
+      case ProjPsd:
+      case ProjNegra:
+      default: 
+       sBack = "";
+    }
+    return sBack;    
+  }
+  /**
+   * getFollSent
+   *    Get access to the following sentence
+   * 
+   * @param ndxWord
+   * @return 
+   */
+  private String getFollSent() {
+    String sBack = "";
+    
+    // Determine how to get to the words
+    switch (iPrjType) {
+      case ProjPsdx:
+        sBack = "./ancestor-or-self::forest/following-sibling::forest[1]";
+        break;
+      case ProjFolia:
+        sBack = "";
+        break;
+      case ProjAlp:
+      case ProjPsd:
+      case ProjNegra:
+      default: 
+       sBack = "";
+    }
+    return sBack;    
+  }
 }
