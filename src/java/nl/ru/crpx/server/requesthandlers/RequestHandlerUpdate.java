@@ -16,9 +16,12 @@ import nl.ru.crpx.project.CorpusResearchProject.ProjType;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.crpx.xq.English;
+import nl.ru.crpx.xq.RuBase;
 import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
+import nl.ru.xmltools.XmlAccess;
+import nl.ru.xmltools.XmlAccessPsdx;
 import nl.ru.xmltools.XmlDocument;
 import nl.ru.xmltools.XmlIndexReader;
 import nl.ru.xmltools.XmlNode;
@@ -76,7 +79,9 @@ public class RequestHandlerUpdate extends RequestHandler {
   
   @Override
   public DataObject handle() {
-    String sSub = ""; // Sub category to be returned
+    String sSub = "";     // Sub category to be returned
+    String sLngPart = ""; // Part of the corpus to be accessed
+    XmlAccess objXmlAcc;  // XML access to the file(chunk) we are working with
     
     try {
       debug(logger, "REQ update");
@@ -99,15 +104,14 @@ public class RequestHandlerUpdate extends RequestHandler {
       // Validate obligatory parameters
       if (!jReq.has("userid") || !jReq.has("crp") || !jReq.has("start") || 
               !jReq.has("count") || !jReq.has("type") || !jReq.has("qc") ||
-              !jReq.has("lng") || !jReq.has("dir"))
+              !jReq.has("lng"))
         return DataObject.errorObject("update syntax", 
-              "One of the parameters is missing: userid, crp, start, count, type, qc, lng, dir ");
+              "One of the parameters is missing: userid, crp, start, count, type, qc, lng ");
       
       // Now extract the obligatory parameters
       sCurrentUserId = jReq.getString("userid");
       String sCrpName = jReq.getString("crp");
       String sLngName = jReq.getString("lng");
-      String sLngPart = jReq.getString("dir");
       int iUpdStart = jReq.getInt("start");
       int iUpdCount = jReq.getInt("count");
       String sUpdType = jReq.getString("type");
@@ -115,9 +119,15 @@ public class RequestHandlerUpdate extends RequestHandler {
       
       // Deal with the optional parameter(s)
       if (jReq.has("sub")) sSub = jReq.getString("sub");
+      if (jReq.has("dir")) sLngPart = jReq.getString("dir");
       
       // Get access to the indicated CRP
       CorpusResearchProject crpThis = crpManager.getCrp(sCrpName, sCurrentUserId);
+      
+      // Validate
+      if (crpThis == null)
+        return DataObject.errorObject("availability", 
+              "The CRP with the indicated name is not available for this user");
       
       // Keep the project type
       this.iPrjType = crpThis.intProjType;
@@ -125,13 +135,18 @@ public class RequestHandlerUpdate extends RequestHandler {
       // Get Access to Saxon
       this.objSaxon = crpThis.getSaxProc();
       this.objSaxDoc = this.objSaxon.newDocumentBuilder();
-      // Initialize access to a document associated with this CRP
+      // Initialize access to ANY document associated with this CRP
       XmlDocument pdxThis = new XmlDocument(this.objSaxDoc, this.objSaxon);
       
-
       // Read the table.json file so that we know where what is
       String sTableLoc = crpThis.getDstDir() + "/" + crpThis.getName() + ".table.json";
-      JSONArray arTable = new JSONArray(FileUtil.readFile(sTableLoc));
+      // Validate
+      File fTableLoc = new File(sTableLoc);
+      if (!fTableLoc.exists())
+        return DataObject.errorObject("availability", 
+              "The CRP with the indicated name has not yet been run. Use /exe to run it first.");
+      // Load the table
+      JSONArray arTable = new JSONArray(FileUtil.readFile(fTableLoc));
       
       // Get a JSON Array that specifies the position where we can find the data
       JSONArray arHitLocInfo = getHitFileInfo(crpThis, arTable, iQC, sSub, iUpdStart, iUpdCount);
@@ -143,8 +158,9 @@ public class RequestHandlerUpdate extends RequestHandler {
       // JSONArray arHitDetails = new JSONArray();
       DataObjectList arHitDetails = new DataObjectList("content");
       String sLastFile = ""; String sOneSrcFilePart = "";
+      objXmlAcc = null;
       // Start gathering the results
-      for (int i=0;i<iUpdCount; i++) {
+      for (int i=0;i<iUpdCount && i < arHitLocInfo.length(); i++) {
         // Calculate the number we are looking for
         int iHitNumber = iUpdStart + i;
         // Start storing the details of this hit
@@ -165,27 +181,44 @@ public class RequestHandlerUpdate extends RequestHandler {
           // Construct the target file name
           sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sOneSrcFile);
           sLastFile = sOneSrcFile;
+          // Create an Xml accesser for this particular type
+          switch (crpThis.intProjType) {
+            case ProjPsdx:
+             objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart);
+            case ProjAlp:
+            case ProjNegra:
+            case ProjFolia:
+            default:
+              break;
+          }
         }
+        // Validate
+        if (objXmlAcc == null)
+          return DataObject.errorObject("incompatibility", 
+              "The interface to the XML files of type ["+crpThis.getProjectType()+"] is not yet implemented");
         // Get access to the XML sentence belonging to this @locs
-        XmlNode ndxForest = getOneSentence(crpThis, pdxThis, sOneSrcFilePart, sLocs);
+        // objXmlAc = getOneSentence(crpThis, pdxThis, sOneSrcFilePart, sLocs);
         
         // Get the information needed for /update
         JSONObject oHitInfo = null;
         switch(sUpdType) {
           case "hits":    // Per hit: file // forestId // ru:back() text
-            oHitInfo = getHitLine(sLngName, ndxForest, sLocw);
+            oHitInfo = objXmlAcc.getHitLine(sLngName, sLocs, sLocw);
             oHitDetails.put("pre", oHitInfo.getString("pre"));
             oHitDetails.put("hit", oHitInfo.getString("hit"));
             oHitDetails.put("fol", oHitInfo.getString("fol"));
             break;
           case "context": // Per hit the contexts: pre // clause // post
-            oHitInfo = getHitContext(sLngName, ndxForest, sLocw, 
+            oHitInfo = objXmlAcc.getHitContext(sLngName, sLocs, sLocw, 
                     crpThis.getPrecNum(), crpThis.getFollNum());
             oHitDetails.put("pre", oHitInfo.getString("pre"));
             oHitDetails.put("hit", oHitInfo.getString("hit"));
             oHitDetails.put("fol", oHitInfo.getString("fol"));
             break;
           case "syntax":  // Per hit: file // forestId // node syntax (psd-kind)
+            DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLngName, sLocs, sLocw);
+            oHitDetails.put("all", oHitSyntax.get("all"));
+            oHitDetails.put("hit", oHitSyntax.get("hit"));
             break;
           default:
             break;
@@ -362,8 +395,7 @@ public class RequestHandlerUpdate extends RequestHandler {
    * 
    * @param sSentId
    * @return 
-   */
-  private XmlNode getOneSentence(CorpusResearchProject crpThis, XmlDocument pdxDoc,
+  private XmlAccess getOneSentence(CorpusResearchProject crpThis, XmlDocument pdxDoc,
           String sFileName, String sSentId) {
     
     try {
@@ -374,338 +406,22 @@ public class RequestHandlerUpdate extends RequestHandler {
       }
       // Get the String representation 
       String sSentLine = objXmlRdr.getOneLine(sSentId);
-      // Convert this into an XmlNode
-      pdxDoc.LoadXml(sSentLine);
-      return new XmlNode(pdxDoc.getNode(), this.objSaxon);
+      // Create an Xml accesser for this particular type
+      switch (crpThis.intProjType) {
+        case ProjPsdx:
+          return (XmlAccess) new XmlAccessPsdx(sSentLine, this.objSaxon);
+        case ProjAlp:
+        case ProjNegra:
+        case ProjFolia:
+        default:
+          return null;
+      }
     } catch (Exception ex) {
       errHandle.DoError("getOneSentence failed", ex, RequestHandlerUpdate.class);
       return null;
     }
   }
-  
-  /**
-   * getHitLine
-   *    Given the sentence in [ndxSentence] get a JSON representation of 
-   *    this sentence that includes:
-   *    { 'pre': 'text preceding the hit',
-   *      'hit': 'the hit text',
-   *      'fol': 'text following the hit'}
-   * 
-   * @param ndxSentence
-   * @param sLocw
-   * @return 
-   */
-  private JSONObject getHitLine(String sLngName, XmlNode ndxSentence, String sLocw) {
-    JSONObject oBack = new JSONObject();
-    String sPre = "";
-    String sHit = "";
-    String sFol = "";
-    
-    try {
-      // Get word nodes of the whole sentence
-      List<XmlNode> arWords = ndxSentence.SelectNodes(getXpathWordsOfSent());
-      // Walk the results
-      int i=0;
-      // Get the preceding context
-      while(i < arWords.size() && arWords.get(i).SelectSingleNode(getXpathHasAnc("id", sLocw)) == null) {
-        // Double check for CODE ancestor
-        if (arWords.get(i).SelectSingleNode(getXpathHasAnc("pos", "CODE")) == null )
-          sPre += getOneWord(arWords.get(i)) + " ";
-        i++;
-      }
-      // Get the hit context
-      while(i < arWords.size() && arWords.get(i).SelectSingleNode(getXpathHasAnc("id", sLocw)) != null) {
-        // Double check for CODE ancestor
-        if (arWords.get(i).SelectSingleNode(getXpathHasAnc("pos", "CODE")) == null )
-          sHit += getOneWord(arWords.get(i)) + " ";
-        i++;
-      }
-      // Get the following context
-      while(i < arWords.size() && arWords.get(i).SelectSingleNode(getXpathHasAnc("id", sLocw)) == null) {
-        // Double check for CODE ancestor
-        if (arWords.get(i).SelectSingleNode(getXpathHasAnc("pos", "CODE")) == null )
-          sFol += getOneWord(arWords.get(i)) + " ";
-        i++;
-      }
-      // Possible corrections depending on language
-      switch(sLngName) {
-        case "eng_hist":
-          // Convert OE symbols
-          sPre = English.VernToEnglish(sPre);
-          sHit = English.VernToEnglish(sHit);
-          sFol = English.VernToEnglish(sFol);
-          break;
-      }
-      
-      // Construct object
-      oBack.put("pre", sPre.trim());
-      oBack.put("hit", sHit.trim());
-      oBack.put("fol", sFol.trim());
-      return oBack;
-    } catch (Exception ex) {
-      errHandle.DoError("getHitLine failed", ex, RequestHandlerUpdate.class);
-      return null;
-    }
-  }
-  
-  /**
-   * getHitContext
-   *    Given the sentence in [ndxSentence] get a JSON representation of 
-   *    this sentence that includes:
-   *    { 'pre': 'text preceding the hit',
-   *      'hit': 'the hit text',
-   *      'fol': 'text following the hit'}
+    */
+ 
 
-   * @param sLngName
-   * @param ndxSentence
-   * @param sLocw
-   * @param iPrecNum
-   * @param iFollNum
-   * @return 
-   */
-  private JSONObject getHitContext(String sLngName, XmlNode ndxSentence, String sLocw, 
-          int iPrecNum, int iFollNum) {
-    XmlNode ndxWork;  // Working node
-    
-    try {
-      // Validate
-      if (ndxSentence == null) return null;
-      // Get the hit context of the target line
-      JSONObject oBack = getHitLine(sLngName, ndxSentence, sLocw);
-      String sPre = oBack.getString("pre");
-      String sFol = oBack.getString("fol");
-      // Get the preceding sentences
-      ndxWork = ndxSentence;
-      for (int i=0; i< iPrecNum; i++) {
-        // Try get preceding sentence
-        ndxWork = ndxWork.SelectSingleNode(getPrecSent());
-        // Got anything?
-        if (ndxWork != null) {
-          // Add this preceding context
-          sPre = "[" + "] " + getOneSent(ndxWork) + sPre;
-        }
-      }
-      // Get the following sentences
-      ndxWork = ndxSentence;
-      for (int i=0; i< iFollNum; i++) {
-        // Try get preceding sentence
-        ndxWork = ndxWork.SelectSingleNode(getFollSent());
-        // Got anything?
-        if (ndxWork != null) {
-          // Add this preceding context
-          sFol += "[" + "] " + getOneSent(ndxWork);
-        }
-      }
-      // Re-combine
-      oBack.put("pre", sPre);
-      oBack.put("fol", sFol);
-      
-      // Return our result
-      return oBack;
-    } catch (Exception ex) {
-      errHandle.DoError("getHitContext failed", ex, RequestHandlerUpdate.class);
-      return null;
-    }
-  }
-  
-  /**
-   * getOneWord
-   *    Given a node to a word, return the word string contained by that node
-   * 
-   * @param ndxWord
-   * @return 
-   */
-  private String getOneWord(XmlNode ndxWord) {
-    String sBack = "";
-    
-    // Validate
-    if (ndxWord == null || ndxWord.isAtomicValue()) return "";
-    // Determine how to get to the words
-    switch (iPrjType) {
-      case ProjPsdx:
-        sBack = ndxWord.getAttributeValue(loc_attr_LeafText);
-        break;
-      case ProjFolia:
-        sBack = "";
-        break;
-      case ProjAlp:
-      case ProjPsd:
-      case ProjNegra:
-      default: 
-       sBack = "";
-    }
-    return sBack;    
-  }
-  /**
-   * getOneSent
-   *    Given a node, get the sentence associated with that node
-   * 
-   * @param ndxThis
-   * @return 
-   */
-  private String getOneSent(XmlNode ndxThis) {
-    String sBack = "";
-      
-    try {
-      // Validate
-      if (ndxThis == null || ndxThis.isAtomicValue()) return "";
-      // Determine how to get to the words
-      switch (iPrjType) {
-        case ProjPsdx:
-          XmlNode ndxSeg = ndxThis.SelectSingleNode("./ancestor-or-self::forest/child::div[@lang='org']/child::seg");
-          sBack = ndxSeg.getNodeValue();
-          break;
-        case ProjFolia:
-          sBack = "";
-          break;
-        case ProjAlp:
-        case ProjPsd:
-        case ProjNegra:
-        default:
-          sBack = "";
-      }
-      return sBack;
-    } catch (Exception ex) {
-      errHandle.DoError("getOneSent failed", ex, RequestHandlerUpdate.class);
-      return "";
-    }
-  }
-  /**
-   * getXpathWordsOfHit
-   *    Get the Xpath expression to identify words of the hit
-   * 
-   * @param sLocw
-   * @return 
-   */
-  private String getXpathWordsOfHit(String sLocw) {
-    String sBack = "";
-    // Determine how to get to the words
-    switch (iPrjType) {
-      case ProjPsdx:
-        sBack = "./descendant::eLeaf[ancestor::eTree[@Id = " + sLocw + 
-                "] and (@Type = 'Vern' or @Type = 'Punct')]";
-        break;
-      case ProjFolia:
-        sBack = "";
-        break;
-      case ProjAlp:
-      case ProjPsd:
-      case ProjNegra:
-      default: 
-       sBack = "";
-    }
-    return sBack;
-  }
-  
-  /**
-   * getXpathWordsOfSent
-   *    Get the Xpath expression to identify words of the sentence
-   * 
-   * @return 
-   */
-  private String getXpathWordsOfSent() {
-    String sBack = "";
-    // Determine how to get to the words
-    switch (iPrjType) {
-      case ProjPsdx:
-        sBack = "./descendant::eLeaf[(@Type = 'Vern' or @Type = 'Punct')]";
-        break;
-      case ProjFolia:
-        sBack = "";
-        break;
-      case ProjAlp:
-      case ProjPsd:
-      case ProjNegra:
-      default: 
-       sBack = "";
-    }
-    return sBack;
-  }
-
-  /**
-   * getXpathHasAnc
-   *    Get the Xpath expression to find an ancestor of the current
-   *    node with a particular @id
-   * 
-   * @param sLocw
-   * @return 
-   */
-  private String getXpathHasAnc(String sType, String sValue) {
-    String sBack = "";
-    // Determine how to get to the words
-    switch (iPrjType) {
-      case ProjPsdx:
-        switch (sType) {
-          case "id":
-            sBack = "./ancestor::eTree[@Id = " + sValue + "] ";
-            break;
-          case "pos":
-            sBack = "./ancestor::eTree[@Label = '" + sValue + "'] ";
-            break;
-        }
-        break;
-      case ProjFolia:
-        sBack = "";
-        break;
-      case ProjAlp:
-      case ProjPsd:
-      case ProjNegra:
-      default: 
-       sBack = "";
-    }
-    return sBack;
-  }
-
-  /**
-   * getPrecSent
-   *    Get access to the preceding sentence
-   * 
-   * @param ndxWord
-   * @return 
-   */
-  private String getPrecSent() {
-    String sBack = "";
-    
-    // Determine how to get to the words
-    switch (iPrjType) {
-      case ProjPsdx:
-        sBack = "./ancestor-or-self::forest/preceding-sibling::forest[1]";
-        break;
-      case ProjFolia:
-        sBack = "";
-        break;
-      case ProjAlp:
-      case ProjPsd:
-      case ProjNegra:
-      default: 
-       sBack = "";
-    }
-    return sBack;    
-  }
-  /**
-   * getFollSent
-   *    Get access to the following sentence
-   * 
-   * @param ndxWord
-   * @return 
-   */
-  private String getFollSent() {
-    String sBack = "";
-    
-    // Determine how to get to the words
-    switch (iPrjType) {
-      case ProjPsdx:
-        sBack = "./ancestor-or-self::forest/following-sibling::forest[1]";
-        break;
-      case ProjFolia:
-        sBack = "";
-        break;
-      case ProjAlp:
-      case ProjPsd:
-      case ProjNegra:
-      default: 
-       sBack = "";
-    }
-    return sBack;    
-  }
 }
