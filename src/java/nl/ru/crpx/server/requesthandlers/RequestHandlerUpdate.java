@@ -1,6 +1,7 @@
 package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import javax.servlet.http.HttpServletRequest;
@@ -79,9 +80,10 @@ public class RequestHandlerUpdate extends RequestHandler {
   
   @Override
   public DataObject handle() {
-    String sSub = "";     // Sub category to be returned
-    String sLngPart = ""; // Part of the corpus to be accessed
-    XmlAccess objXmlAcc;  // XML access to the file(chunk) we are working with
+    String sSub = "";         // Sub category to be returned
+    String sLngPart = "";     // Part of the corpus to be accessed
+    JSONArray arFiles = null; // List of file names separated by tabs
+    XmlAccess objXmlAcc;      // XML access to the file(chunk) we are working with
     
     try {
       debug(logger, "REQ update");
@@ -120,6 +122,7 @@ public class RequestHandlerUpdate extends RequestHandler {
       // Deal with the optional parameter(s)
       if (jReq.has("sub")) sSub = jReq.getString("sub");
       if (jReq.has("dir")) sLngPart = jReq.getString("dir");
+      if (jReq.has("files")) arFiles = jReq.getJSONArray("files");
       
       // Get access to the indicated CRP
       CorpusResearchProject crpThis = crpManager.getCrp(sCrpName, sCurrentUserId);
@@ -149,7 +152,7 @@ public class RequestHandlerUpdate extends RequestHandler {
       JSONArray arTable = new JSONArray(FileUtil.readFile(fTableLoc));
       
       // Get a JSON Array that specifies the position where we can find the data
-      JSONArray arHitLocInfo = getHitFileInfo(crpThis, arTable, iQC, sSub, iUpdStart, iUpdCount);
+      JSONArray arHitLocInfo = getHitFileInfo(crpThis, arTable, iQC, sSub, arFiles, iUpdStart, iUpdCount);
 
       // Get the directory where corpus files must be found
       String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
@@ -256,7 +259,7 @@ public class RequestHandlerUpdate extends RequestHandler {
    * @return 
    */
   private JSONArray getHitFileInfo(CorpusResearchProject crpThis, JSONArray arTable, 
-          int iQC, String sSub, int iUpdStart, int iUpdCount) {
+          int iQC, String sSub, JSONArray arFiles, int iUpdStart, int iUpdCount) {
     JSONArray arBack;     // combines the results
     JSONArray arRes;      // array of [results] within the hit-file/qc combi
     String sHitFile;      // Name of hit-file
@@ -294,6 +297,25 @@ public class RequestHandlerUpdate extends RequestHandler {
       // Get to the hits for this QC
       if (!oQClist.has("hits")) return null;
       JSONArray arQClist = oQClist.getJSONArray("hits");
+      
+      // If there are any files in [arFiles], then remove those that are not
+      //   in the subscription out of the [hits]
+      if (arFiles != null && arFiles.length() > 0) {
+        // Convert the list to a searchable one
+        List<String> lstHits = new ArrayList<>();
+        for (int j=0;j<arFiles.length();j++) {lstHits.add(arFiles.getString(j));}
+        // Check the list of hits
+        for (int j=arQClist.length()-1;j>=0;j--) {
+          // Access this one
+          JSONObject oOne = (JSONObject)arQClist.get(j);
+          // Check if this one should be included
+          if (!lstHits.contains(oOne.getString("file"))) {
+            // Remove it from the list
+            arQClist.remove(j);
+          }
+        }
+      }
+      
       int iLastK = 0;
       // Walk the list with hit and subcat counts for this QC
       for (int j=0;j<arQClist.length();j++) {
