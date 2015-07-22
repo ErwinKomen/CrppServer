@@ -202,30 +202,36 @@ public class RequestHandlerUpdate extends RequestHandler {
         // Get access to the XML sentence belonging to this @locs
         // objXmlAc = getOneSentence(crpThis, pdxThis, sOneSrcFilePart, sLocs);
         
+        // Convert [sUpdType] into an array
+        String[] arUpdType = sUpdType.split("+");
+        
         // Get the information needed for /update
         JSONObject oHitInfo = null;
-        switch(sUpdType) {
-          case "hits":    // Per hit: file // forestId // ru:back() text
-            oHitInfo = objXmlAcc.getHitLine(sLngName, sLocs, sLocw);
-            oHitDetails.put("pre", oHitInfo.getString("pre"));
-            oHitDetails.put("hit", oHitInfo.getString("hit"));
-            oHitDetails.put("fol", oHitInfo.getString("fol"));
-            break;
-          case "context": // Per hit the contexts: pre // clause // post
-            oHitInfo = objXmlAcc.getHitContext(sLngName, sLocs, sLocw, 
-                    crpThis.getPrecNum(), crpThis.getFollNum());
-            oHitDetails.put("pre", oHitInfo.getString("pre"));
-            oHitDetails.put("hit", oHitInfo.getString("hit"));
-            oHitDetails.put("fol", oHitInfo.getString("fol"));
-            break;
-          case "syntax":  // Per hit: file // forestId // node syntax (psd-kind)
-            DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLngName, sLocs, sLocw);
-            oHitDetails.put("all", oHitSyntax.get("all"));
-            oHitDetails.put("hit", oHitSyntax.get("hit"));
-            break;
-          default:
-            break;
+        for (int k=0;k<arUpdType.length;k++) {
+          switch(arUpdType[k].trim()) {
+            case "hits":    // Per hit: file // forestId // ru:back() text
+              oHitInfo = objXmlAcc.getHitLine(sLngName, sLocs, sLocw);
+              oHitDetails.put("preH", oHitInfo.getString("pre"));
+              oHitDetails.put("hitH", oHitInfo.getString("hit"));
+              oHitDetails.put("folH", oHitInfo.getString("fol"));
+              break;
+            case "context": // Per hit the contexts: pre // clause // post
+              oHitInfo = objXmlAcc.getHitContext(sLngName, sLocs, sLocw, 
+                      crpThis.getPrecNum(), crpThis.getFollNum());
+              oHitDetails.put("preC", oHitInfo.getString("pre"));
+              oHitDetails.put("hitC", oHitInfo.getString("hit"));
+              oHitDetails.put("folC", oHitInfo.getString("fol"));
+              break;
+            case "syntax":  // Per hit: file // forestId // node syntax (psd-kind)
+              DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLngName, sLocs, sLocw);
+              oHitDetails.put("allS", oHitSyntax.get("all"));
+              oHitDetails.put("hitS", oHitSyntax.get("hit"));
+              break;
+            default:
+              break;
+          }
         }
+
         // Add the acquired JSONObject with info about this line
         arHitDetails.add(oHitDetails);
       }
@@ -263,10 +269,8 @@ public class RequestHandlerUpdate extends RequestHandler {
     JSONArray arBack;     // combines the results
     JSONArray arRes;      // array of [results] within the hit-file/qc combi
     String sHitFile;      // Name of hit-file
-    int iResIdx = 0;      // Index into the results array
     int iUpdCurrent;      // Item we are looking for now
     int iUpdFinish;       // Last entry to be taken (starting with 0)
-    int iNumber = 0;      // The result number we have found so far
     int iEntryFirst = -1; // Total result count number: first entry in batch (starting with 0)
     int iEntryLast = -1;  // Total result count number: Last entry in batch (starting with 0)
     int iSubCat = -1;     // Index of the subcat (if specified)
@@ -379,7 +383,7 @@ public class RequestHandlerUpdate extends RequestHandler {
               }
             }
             // Initialize the result index
-            iResIdx = 0;
+            // iResIdx = 0;
             // Reset the 'lastk' variable
             iLastK = 0;
           }
@@ -411,39 +415,4 @@ public class RequestHandlerUpdate extends RequestHandler {
     }
   }
   
-  /**
-   * getOneSentence
-   *    Find the sentence for the indicated file
-   * 
-   * @param sSentId
-   * @return 
-  private XmlAccess getOneSentence(CorpusResearchProject crpThis, XmlDocument pdxDoc,
-          String sFileName, String sSentId) {
-    
-    try {
-      // Get access to the correct xml index reader
-      if (objXmlRdr == null || !objXmlRdr.getFileName().equals(sFileName)) {
-        objCurrentFile = new File(sFileName);
-        this.objXmlRdr = new XmlIndexReader(objCurrentFile, crpThis, pdxDoc);
-      }
-      // Get the String representation 
-      String sSentLine = objXmlRdr.getOneLine(sSentId);
-      // Create an Xml accesser for this particular type
-      switch (crpThis.intProjType) {
-        case ProjPsdx:
-          return (XmlAccess) new XmlAccessPsdx(sSentLine, this.objSaxon);
-        case ProjAlp:
-        case ProjNegra:
-        case ProjFolia:
-        default:
-          return null;
-      }
-    } catch (Exception ex) {
-      errHandle.DoError("getOneSentence failed", ex, RequestHandlerUpdate.class);
-      return null;
-    }
-  }
-    */
- 
-
 }
