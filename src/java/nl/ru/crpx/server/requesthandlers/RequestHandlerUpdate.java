@@ -203,7 +203,11 @@ public class RequestHandlerUpdate extends RequestHandler {
         // objXmlAc = getOneSentence(crpThis, pdxThis, sOneSrcFilePart, sLocs);
         
         // Convert [sUpdType] into an array
-        String[] arUpdType = sUpdType.split("+");
+        String[] arUpdType = {sUpdType};
+        if (sUpdType.contains("\\+"))
+          arUpdType = sUpdType.split("[+]");
+        else if (sUpdType.contains(" "))
+          arUpdType = sUpdType.split(" ");
         
         // Get the information needed for /update
         JSONObject oHitInfo = null;
