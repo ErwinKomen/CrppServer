@@ -208,6 +208,10 @@ public class RequestHandlerUpdate extends RequestHandler {
           arUpdType = sUpdType.split("[+]");
         else if (sUpdType.contains(" "))
           arUpdType = sUpdType.split(" ");
+        else if (sUpdType.contains("\\|"))
+          arUpdType = sUpdType.split("[|]");
+        else if (sUpdType.contains("_"))
+          arUpdType = sUpdType.split("_");
         
         // Get the information needed for /update
         JSONObject oHitInfo = null;
