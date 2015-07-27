@@ -153,16 +153,29 @@ public class RequestHandlerExecute extends RequestHandler {
         // Set the @searchParam correct
         searchParam.put("query", sNewQuery);
         
-        // Initiate the search by invoking "searchXq"
-        search = searchMan.searchXq(prjThis, sCurrentUserId, searchParam, bCache);
-        
-        // Get the @id of the job that has been created
-        sThisJobId = search.getJobId();
-        String sNow = Job.getCurrentTimeStamp();
-        // Additional debugging to find out where the errors come from
-        errHandle.debug("Xqjob creation: [" + sNow + "] userid=[" + sCurrentUserId + "] jobid=[" + 
-                sThisJobId + "], finished=" + 
-                search.finished() + " status=" + search.getJobStatus() );
+        // Check if there are any previous results for this job that can be re-used
+        if (bCache && prjThis.hasResults(oQuery)) {
+          // Initiate a result-fetch job
+          search = searchMan.searchXqReUse(prjThis, sCurrentUserId, searchParam);
+          // Get the @id of the job that has been created
+          sThisJobId = search.getJobId();
+          String sNow = Job.getCurrentTimeStamp();
+          // Additional debugging to find out where the errors come from
+          errHandle.debug("ReUsejob creation: [" + sNow + "] userid=[" + sCurrentUserId + "] jobid=[" + 
+                  sThisJobId + "], finished=" + 
+                  search.finished() + " status=" + search.getJobStatus() );
+        } else {
+          // Initiate the search by invoking "searchXq"
+          search = searchMan.searchXq(prjThis, sCurrentUserId, searchParam, bCache);
+
+          // Get the @id of the job that has been created
+          sThisJobId = search.getJobId();
+          String sNow = Job.getCurrentTimeStamp();
+          // Additional debugging to find out where the errors come from
+          errHandle.debug("Xqjob creation: [" + sNow + "] userid=[" + sCurrentUserId + "] jobid=[" + 
+                  sThisJobId + "], finished=" + 
+                  search.finished() + " status=" + search.getJobStatus() );
+        }
 
       }
 
