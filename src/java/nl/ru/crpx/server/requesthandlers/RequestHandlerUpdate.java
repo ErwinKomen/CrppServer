@@ -3,9 +3,7 @@ package nl.ru.crpx.server.requesthandlers;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 import javax.servlet.http.HttpServletRequest;
-import javax.xml.xpath.XPathExpressionException;
 import net.sf.saxon.s9api.DocumentBuilder;
 import net.sf.saxon.s9api.Processor;
 import net.sf.saxon.s9api.QName;
@@ -16,8 +14,6 @@ import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.project.CorpusResearchProject.ProjType;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
-import nl.ru.crpx.xq.English;
-import nl.ru.crpx.xq.RuBase;
 import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
@@ -25,7 +21,6 @@ import nl.ru.xmltools.XmlAccess;
 import nl.ru.xmltools.XmlAccessPsdx;
 import nl.ru.xmltools.XmlDocument;
 import nl.ru.xmltools.XmlIndexReader;
-import nl.ru.xmltools.XmlNode;
 import org.apache.log4j.Logger;
 
 /*
@@ -53,6 +48,7 @@ import org.apache.log4j.Logger;
  *              "hits"    - provide list of: file / forestId / hit text
  *              "context" - provide list of: pre / text / post
  *              "syntax"  - provide list of: psd-tree
+ *              "msg"     - provide list of "msg" output
  * 
  * @author  Erwin R. Komen
  * @history 16/jul/2015 created
@@ -96,7 +92,7 @@ public class RequestHandlerUpdate extends RequestHandler {
       //      "count": 50,          // number of hits (within the category)
       //      "qc": 3,              // QC line number
       //      "sub": "3[sv]",       // OPTIONAL: Sub category
-      //      "type": "syntax"      // Action required: "hits", "context" or "syntax"
+      //      "type": "syntax"      // Action required: "hits", "context", "msg" or "syntax"
       //   }
       // Note: if no user is given, then we should give all users and all crp's
       sReqArgument = getReqString(request);
