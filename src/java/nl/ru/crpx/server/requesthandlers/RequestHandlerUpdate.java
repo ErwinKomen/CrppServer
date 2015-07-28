@@ -149,6 +149,13 @@ public class RequestHandlerUpdate extends RequestHandler {
       
       // Get a JSON Array that specifies the position where we can find the data
       JSONArray arHitLocInfo = getHitFileInfo(crpThis, arTable, iQC, sSub, arFiles, iUpdStart, iUpdCount);
+      // Validate what we receive back
+      if (arHitLocInfo == null) {
+        // Return an appropriate error message
+        return DataObject.errorObject("bad request", 
+              "The requested information could not be found (getHitFileInfo). Internal errors:" + 
+                      errHandle.getErrList().toString());
+      }
 
       // Get the directory where corpus files must be found
       String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
