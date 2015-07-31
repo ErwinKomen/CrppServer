@@ -176,6 +176,8 @@ public abstract class RequestHandler {
    */
   public static DataObject handle(CrpPserver servlet, HttpServletRequest request) throws UnsupportedEncodingException {
     try {
+      // Reset the error handling
+      errHandle.clearErr();
       // Initialize the userId as something from the HttpSession
       // (Note: subsequent code may get a better userId from the request object)
       // setUserId(request.getSession().getId());

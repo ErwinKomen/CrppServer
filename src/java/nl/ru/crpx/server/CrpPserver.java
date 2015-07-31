@@ -164,6 +164,9 @@ public class CrpPserver extends HttpServlet  {
       // Try to formulate a response (call the job-related stuff)
       DataObject response = RequestHandler.handle(this, request);
       
+      // Reset the error handling
+      errHandle.clearErr();
+      
       // Determine response type
       DataFormat outputType = response.getOverrideType(); // some responses override the user's request (i.e. article XML)
       if (outputType == null) {

@@ -21,6 +21,7 @@ import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.server.CrpPserver;
 import static nl.ru.crpx.server.crp.CrpUser.sProjectBase;
 import nl.ru.crpx.tools.ErrHandle;
+import nl.ru.util.ByRef;
 import nl.ru.util.FileUtil;
 
 /**
@@ -71,6 +72,12 @@ public class CrpManager {
       } 
       // Getting here means that we need to create a new entry
       CrpUser oNewCrpUser = new CrpUser(servlet, sProjectName, /* sLngIndex, */ sUserId, errHandle);
+      // Have we succeeded?
+      if (errHandle.bInterrupt || errHandle.hasErr()) {
+        // There have been errors
+        errHandle.bInterrupt = true;
+        return null;
+      }
       // Add this to the list
       loc_crpUserList.add(oNewCrpUser);
       errHandle.debug("adding CrpUser in getCrpUser: [" + sProjectName + 
@@ -89,10 +96,18 @@ public class CrpManager {
    * 
    * @param sProjectName
    * @param sUserId
+   * @param oErr
    * @return 
    */
-  public CorpusResearchProject getCrp(String sProjectName, /* String sLngIndex,  */
-          String sUserId) {
+  public CorpusResearchProject getCrp(String sProjectName, String sUserId,
+          ByRef<ErrHandle> oErr) {
+    // Reset the errore handling
+    errHandle.clearErr();
+    // Link the error handle
+    oErr.argValue = errHandle;
+    return getCrp(sProjectName, sUserId);
+  }
+  public CorpusResearchProject getCrp(String sProjectName, String sUserId) {
     try {
       CrpUser oCrpUser= getCrpUser(sProjectName, /* sLngIndex, */ sUserId);
       // Check what we get back

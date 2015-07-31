@@ -8,9 +8,6 @@
 package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
@@ -19,7 +16,8 @@ import nl.ru.crpx.search.Job;
 import nl.ru.crpx.search.QueryException;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
-import nl.ru.util.FileUtil;
+import nl.ru.crpx.tools.ErrHandle;
+import nl.ru.util.ByRef;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
 
@@ -73,16 +71,25 @@ public class RequestHandlerExecute extends RequestHandler {
       try {
         jReq = new JSONObject(sReqArgument);
       } catch (Exception ex) {
-        return DataObject.errorObject("INTERNAL_ERROR", 
+        return DataObject.errorObject("Argument error", 
           "Cannot interpret /exe request ["+ sReqArgument +"]");
       }
       String sLng = (jReq.has("lng")) ? jReq.getString("lng") : "eng_hist";
-      String sCrpName = (jReq.has("crp")) ? jReq.getString("crp") : "";
+      // Test for CRP presence
+      if (!jReq.has("crp"))
+        return DataObject.errorObject("Argument error", 
+          "An /exe request should contain the name of the CRP to be executed");
+      // Now get the CRP name safely
+      String sCrpName = jReq.getString("crp");
+      // Add the extension of needed
+      if (!sCrpName.endsWith(".crpx")) sCrpName += ".crpx";
+      // Test for userid
       if (jReq.has("userid")) userId = jReq.getString("userid");
       sCurrentUserId = userId;
       String sFocus = (jReq.has("dir")) ? jReq.getString("dir") : "";
       // Normally do caching
       boolean bCache = (jReq.has("cache")) ? jReq.getBoolean("cache") : true;
+      // NOTE: the save DATE is the date when the CRP file was saved (on the server)
       String sSave = getCrpSaveDate(sCrpName, sCurrentUserId);
       // Double checking
       if (jReq.has("cache")) {
@@ -99,7 +106,7 @@ public class RequestHandlerExecute extends RequestHandler {
       oQuery.put("crp", sCrpName);
       oQuery.put("dir", sFocus);
       oQuery.put("userid", (jReq.has("userid")) ? jReq.getString("userid") : "");
-      oQuery.put("save", sSave);
+      oQuery.put("save", sSave);  // Save date of the CRP!!
       // The 'query' consists of [lng, crp, dir, userid, save]
       String sNewQuery = oQuery.toString();
       
@@ -127,12 +134,16 @@ public class RequestHandlerExecute extends RequestHandler {
         // ============= Try loading and initializing CRP =====================
 
         // Get the CRP that is supposed to be executed (or load it if it is not loaded yet)
-        prjThis = crpManager.getCrp(sCrpName, sCurrentUserId);
-        if (prjThis == null) {
-          String sMsg;
-          if (errHandle.hasErr())
-            sMsg = "Errors: " + errHandle.getErrList().toString();
-          else
+        ByRef<ErrHandle> errCrp = new ByRef(null);
+        prjThis = crpManager.getCrp(sCrpName, sCurrentUserId, errCrp);
+        if (prjThis == null || errHandle.bInterrupt || errCrp.argValue.bInterrupt ||
+                errCrp.argValue.hasErr()) {
+          String sMsg = "";
+          if (errHandle.hasErr() || errCrp.argValue.hasErr()) {
+            if (errHandle.hasErr()) sMsg = errHandle.getErrList().toString();
+            if (!sMsg.isEmpty()) sMsg += "\n";
+            sMsg = "Errors: " + sMsg + errCrp.argValue.getErrList();
+          } else
             sMsg = "Could not initialize project [" + sCrpName + "] for user [" +
                     sCurrentUserId + "]";
           return DataObject.errorObject("INTERNAL_ERROR", sMsg);
@@ -149,6 +160,9 @@ public class RequestHandlerExecute extends RequestHandler {
                     "Cannot find input file for language [" + sLng + "] and dir=[" + sFocus + "]");
         // Set the correct source 
         prjThis.setSrcDir(new File(sTarget));
+        if (!prjThis.getSrcDir().exists())
+           return DataObject.errorObject("Corpus error", 
+                    "The requested 'dir' part for the corpus does not exist on the server");
         
         // Set the @searchParam correct
         searchParam.put("query", sNewQuery);
@@ -157,6 +171,11 @@ public class RequestHandlerExecute extends RequestHandler {
         if (bCache && prjThis.hasResults(oQuery)) {
           // Initiate a result-fetch job
           search = searchMan.searchXqReUse(prjThis, sCurrentUserId, searchParam);
+          // Check for returns with errors
+          if (errHandle.bInterrupt || errHandle.hasErr()) {
+            return DataObject.errorObject("Re-used exe problem", 
+                     errHandle.getErrList().toString());
+          }
           // Get the @id of the job that has been created
           sThisJobId = search.getJobId();
           String sNow = Job.getCurrentTimeStamp();

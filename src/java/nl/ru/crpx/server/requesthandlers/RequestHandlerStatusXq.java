@@ -5,6 +5,7 @@
  */
 package nl.ru.crpx.server.requesthandlers;
 
+import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
@@ -64,7 +65,16 @@ public class RequestHandlerStatusXq  extends RequestHandler {
         // Check if the status is error
         if (sJobStatus.equals("error")) {
           // Set the error message
-          sResult = errHandle.getErrList().toString();
+          if (errHandle.hasErr())
+            sResult = errHandle.getErrList().toString() + "\n";
+          // Get the list of XQ errors
+          List<JSONObject> arErr = search.getJobErrors();
+          if (arErr.size() > 0)
+            for (int i=0;i<arErr.size();i++)
+              sResult += arErr.get(i).toString() + "\n";
+          String sJobRes = search.getJobResult();
+          // Errors might also be in JobResult...
+          if (!sJobRes.isEmpty()) sResult += sJobRes + "\n";
         } else {
           sResult = "The search has finished";
           objContent.put("searchParam", searchParam.toDataObject());
