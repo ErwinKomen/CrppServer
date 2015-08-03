@@ -31,6 +31,9 @@ import org.apache.log4j.Logger;
  *    userid  - name of the user under which the .crpx is stored
  *    crp     - the xml text of the crpx file
  *    overwrite - boolean indicating that we may overwrite an existing copy
+ * Optional:
+ *    lng     - which language to link to the CRP
+ *    dir     - which 'dir' within the language to link to it
  * 
  * @author Erwin R. Komen
  */
@@ -52,6 +55,9 @@ public class RequestHandlerCrpSet extends RequestHandler {
   public DataObject handle() {
     boolean bOverwrite = true;
     String sCrpText = "";
+    String sLng = "";           // Optional "crp" 
+    String sDir = "";           // Optional "lng"
+    
     try {
       debug(logger, "REQ crpset");
       // We are expecting a 'multipart' request consisting of two parts:
@@ -82,6 +88,9 @@ public class RequestHandlerCrpSet extends RequestHandler {
       
       // Possibly get overwrite parameter
       if (jReq.has("overwrite")) bOverwrite = jReq.getBoolean("overwrite");
+      // Get optional "lng" and "dir" parameters
+      if (jReq.has("lng")) sLng = jReq.getString("lng");
+      if (jReq.has("dir")) sDir = jReq.getString("dir");
       // Check for the name of the crpx
       String sCrpName = "";
       if (!jReq.has("name")) return DataObject.errorObject("syntax", 
