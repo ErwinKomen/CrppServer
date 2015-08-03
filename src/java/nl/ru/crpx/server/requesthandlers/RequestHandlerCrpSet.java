@@ -75,9 +75,9 @@ public class RequestHandlerCrpSet extends RequestHandler {
           "The /crpset request must contain: crp.");
       sCrpText = unescapeHexCoding(jReq.getString("crp"));
       // ======= Debugging ============
-      logger.debug("The crp contains:");
-      logger.debug(sCrpText);
-      logger.debug("================");
+      // logger.debug("The crp contains:");
+      // logger.debug(sCrpText);
+      // logger.debug("================");
       // ==============================
       
       // Possibly get overwrite parameter

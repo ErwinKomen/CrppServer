@@ -83,6 +83,9 @@ public class RequestHandlerCrpDel extends RequestHandler {
       // Remove the file from the server
       fCrpPath.delete();
       
+      // Also remove the CRP from the CrpManager
+      crpManager.removeCrpUser(sProjectBase, userId);
+      
       // Prepare the content: full file name
       DataObjectMapElement objContent = new DataObjectMapElement();
       objContent.put("file", sCrpPath);
