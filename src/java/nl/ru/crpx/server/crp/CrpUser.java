@@ -29,8 +29,6 @@ public class CrpUser {
   CorpusResearchProject prjThis;  // The CRP to which the user has access
   String prjName;                 // The name of this CRP
   String userId;                  // The user that has access to this CRP
-  // String lngIndex;                // The language for this project
-  // File indexDir;                  // Pointer to the input directory
   ErrHandle errHandle;            // The error handler we are using
   SearchManager searchMan;        // Local pointer to the general search manager
   // ================ Initialisation of a new class element ===================

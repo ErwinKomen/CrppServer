@@ -7,6 +7,7 @@
  */
 package nl.ru.crpx.server.crp;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -23,6 +24,8 @@ import static nl.ru.crpx.server.crp.CrpUser.sProjectBase;
 import nl.ru.crpx.tools.ErrHandle;
 import nl.ru.util.ByRef;
 import nl.ru.util.FileUtil;
+import nl.ru.util.json.JSONArray;
+import nl.ru.util.json.JSONObject;
 
 /**
  * CrpManager
@@ -58,20 +61,18 @@ public class CrpManager {
    * @param sUserId
    * @return 
    */
-  public CrpUser getCrpUser(String sProjectName, /* String sLngIndex, */
-          String sUserId) {
+  public CrpUser getCrpUser(String sProjectName, String sUserId) {
     try {
       // Check if this combination already exists in the list
       for (CrpUser oCrpUser : loc_crpUserList) {
         // Check if this has the correct project name, language index and user id
-        if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)
-                /* && oCrpUser.lngIndex.equals(sLngIndex) */) {
+        if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)) {
           // Return this object
           return oCrpUser;
         } 
       } 
       // Getting here means that we need to create a new entry
-      CrpUser oNewCrpUser = new CrpUser(servlet, sProjectName, /* sLngIndex, */ sUserId, errHandle);
+      CrpUser oNewCrpUser = new CrpUser(servlet, sProjectName, sUserId, errHandle);
       // Have we succeeded?
       if (errHandle.bInterrupt || errHandle.hasErr()) {
         // There have been errors
@@ -122,6 +123,175 @@ public class CrpManager {
   }
   
   /**
+   * getUserSettings
+   *    Read the user's "settings.json", if it is available
+   * 
+   * @param sUserId
+   * @return 
+   */
+  public JSONObject getUserSettings(String sUserId) {
+    JSONObject oSettings ;
+    try {
+      String sFile = FileUtil.nameNormalize(sProjectBase+sUserId+"/settings.json");
+      File fSettings = new File(sFile);
+      // Check existence
+      if (!fSettings.exists()) {
+        // Create a default one
+        oSettings = new JSONObject();
+        oSettings.put("userid", sUserId);
+        oSettings.put("links", new JSONArray());
+        // Wrtie the default settings
+        setUserSettings(sUserId, oSettings);
+      }
+      // Double check existence
+      if (fSettings.exists()) {
+        // Read the contents
+        oSettings = new JSONObject(FileUtil.readFile(fSettings));
+        // Return what we found
+        return oSettings;
+      } else {
+        return null;
+      }
+    } catch (Exception ex) {
+      errHandle.DoError("Could not load user settings", ex, CrpManager.class);
+      return null;
+    }
+  }
+  /**
+   * setUserSettings
+   *    Set the "settings.json" file for user sUserId
+   * 
+   * @param sUserId
+   * @param oSettings 
+   */
+  public void setUserSettings(String sUserId, JSONObject oSettings) {
+    try {
+      // Validate
+      if (sUserId.isEmpty() || oSettings == null) return;
+      String sFile = FileUtil.nameNormalize(sProjectBase+sUserId+"/settings.json");
+      File fSettings = new File(sFile);
+      // Save the settings
+      FileUtil.writeFile(fSettings, oSettings.toString(1));
+    } catch (Exception ex) {
+      errHandle.DoError("Could not set user settings", ex, CrpManager.class);
+    }
+  }
+  /**
+   * addUserSettings
+   *    Add a key/value pair to the user settings
+   * 
+   * @param sUserId
+   * @param sKey
+   * @param sValue 
+   */
+  public void addUserSettings(String sUserId, String sKey, String sValue) {
+    try {
+      // Read the current settings
+      JSONObject oSettings = getUserSettings(sUserId);
+      // Validate
+      if (oSettings==null) {
+        errHandle.DoError("Could not add to user settings");
+        return;
+      }
+      // Add the key/value pair
+      oSettings.put(sKey, sValue);
+      // Save the adapted settings
+      setUserSettings(sUserId, oSettings);
+    } catch (Exception ex) {
+      errHandle.DoError("Could not add to user settings", ex, CrpManager.class);
+    }
+  }
+  /**
+   * addUserSettingsCrpLng
+   *    Add a link between CRP and Lng/Dir for a user
+   * 
+   * @param sUserId
+   * @param sCrpName
+   * @param sLng
+   * @param sDir 
+   */
+  public void addUserSettingsCrpLng(String sUserId, String sCrpName, 
+          String sLng, String sDir) {
+    try {
+      // Read the current settings
+      JSONObject oSettings = getUserSettings(sUserId);
+      // Validate
+      if (oSettings==null) {
+        errHandle.DoError("Could not add to user settings");
+        return;
+      }
+      // Get the JSON linking array
+      JSONArray arLinks = oSettings.getJSONArray("links");
+      // Does the link exist already?
+      boolean bExists = false;
+      JSONObject oLink = null;
+      for (int i=0;i<arLinks.length();i++) {
+        oLink = arLinks.getJSONObject(i);
+        if (oLink.getString("crp").equals(sCrpName)) {
+          bExists = true;
+          // Adapt the information
+          oLink.put("lng", sLng);
+          oLink.put("dir", sDir);
+          // Replace it
+          arLinks.put(i, oLink);
+          break;
+        }
+      }
+      // Do we have it?
+      if (!bExists) {
+        // Add the link
+        oLink = new JSONObject();
+        oLink.put("crp", sCrpName);
+        oLink.put("lng", sLng);
+        oLink.put("dir", sDir);
+        arLinks.put(oLink);
+      }
+      // Add or replace the information
+      oSettings.put("links", arLinks);
+      // Save the adapted settings
+      setUserSettings(sUserId, oSettings);
+    } catch (Exception ex) {
+      errHandle.DoError("Could not add to user settings", ex, CrpManager.class);
+    }
+  }
+  
+  /**
+   * getUserLinkCrp
+   *    Check for user sUserId if he has a default LNG/DIR for project sCrpName
+   * 
+   * @param sUserId
+   * @param sCrpname
+   * @return 
+   */
+  public JSONObject getUserLinkCrp(String sUserId, String sCrpName) {
+    try {
+            // Read the current settings
+      JSONObject oSettings = getUserSettings(sUserId);
+      // Validate
+      if (oSettings==null) {
+        errHandle.DoError("Could not add to user settings");
+        return null;
+      }
+      // Get the JSON linking array
+      JSONArray arLinks = oSettings.getJSONArray("links");
+      // Does the link exist?
+      JSONObject oLink = null;
+      for (int i=0;i<arLinks.length();i++) {
+        oLink = arLinks.getJSONObject(i);
+        if (oLink.getString("crp").equals(sCrpName)) {
+          // Return the link object
+          return oLink;
+        }
+      }
+      // Getting here means: no result
+      return null;
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get user link crp info", ex, CrpManager.class);
+      return null;
+    }
+  }
+  
+  /**
    * getCrpList - get a list of the CRPs for the indicated user
    *              If no user is given: provide all users and all CRPs
    * 
@@ -139,7 +309,6 @@ public class CrpManager {
     try {
       // Create a list to reply
       DataObjectList arList = new DataObjectList("crplist");
-      // List<DataObject> lSorted = new ArrayList<>();
       
       // Get a path to the users
       sUserPath = FileUtil.nameNormalize(sProjectBase);
@@ -181,6 +350,13 @@ public class CrpManager {
                 oData.put("loaded", bLoaded);
                 String sCrpPath = pathCrp.toString();
                 oData.put("file", sCrpPath);
+                // Get any lng/dir info
+                JSONObject oLink = getUserLinkCrp(sUserId, sCrp);
+                if (oLink != null) {
+                  // Add the lng and dir info
+                  oData.put("lng", oLink.getString("lng"));
+                  oData.put("dir", oLink.getString("dir"));
+                }
                 // Include the object here
                 arList.add(oData);
                 // lSorted.add(oData);
