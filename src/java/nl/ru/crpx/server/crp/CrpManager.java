@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
@@ -152,6 +153,65 @@ public class CrpManager {
       } else {
         return null;
       }
+    } catch (Exception ex) {
+      errHandle.DoError("Could not load user settings", ex, CrpManager.class);
+      return null;
+    }
+  }
+  /**
+   * getUserSettingsObject
+   *    Read the user's "settings.json", if it is available
+   * 
+   * @param sUserId
+   * @return 
+   */
+  public DataObject getUserSettingsObject(String sUserId) {
+    DataObjectMapElement oSettings = new DataObjectMapElement();
+    try {
+      // Default initialisations
+      DataObjectList arLinksList = new DataObjectList("links");
+      // Try get settings file
+      String sFile = FileUtil.nameNormalize(sProjectBase+sUserId+"/settings.json");
+      File fSettings = new File(sFile);
+      // Check existence
+      if (fSettings.exists()) {
+        // Read the settings as JSON object
+        JSONObject oJsonSet = new JSONObject(FileUtil.readFile(fSettings));
+        // Copy known key/value pairs
+        Iterator keys = oJsonSet.keys();
+        while (keys.hasNext()) {
+          String sKeyName = keys.next().toString();
+          switch (sKeyName) {
+            case "recent":
+            case "userid":
+              // Just copy the key/value
+              oSettings.put(sKeyName, oJsonSet.getString(sKeyName));
+              break;
+            case "links":
+              // This is an array of objects
+              JSONArray arLinks = oJsonSet.getJSONArray("links");
+              for (int i=0;i<arLinks.length(); i++) {
+                // Get this object
+                JSONObject oThis = arLinks.getJSONObject(i);
+                // Create a new object
+                DataObjectMapElement oLink = new DataObjectMapElement();
+                oLink.put("crp", oThis.getString("crp"));
+                oLink.put("lng", oThis.getString("lng"));
+                oLink.put("dir", oThis.getString("dir"));
+                // Add the object to the list
+                arLinksList.add(oLink);
+              }
+              // Add this element to the settings object
+              oSettings.put("links", arLinksList);
+          }
+        }
+      } else {
+        // Create a default one
+        oSettings.put("userid", sUserId);
+        oSettings.put("links", arLinksList);
+      }
+      // Return what we found
+      return oSettings;
     } catch (Exception ex) {
       errHandle.DoError("Could not load user settings", ex, CrpManager.class);
       return null;

@@ -209,14 +209,17 @@ public abstract class RequestHandler {
       // Choose the RequestHandler subclass
       RequestHandler requestHandler = null;
       switch (indexName) {
-        case "crplist": // List available CRPs for one or all user(s)
-          requestHandler = new RequestHandlerCrpList(servlet, request, indexName);
+        case "crpchg":    // Remove a CRP on the /crpp server side
+          requestHandler = new RequestHandlerCrpChg(servlet, request, indexName);
           break;
         case "crpdel":    // Remove a CRP on the /crpp server side
           requestHandler = new RequestHandlerCrpDel(servlet, request, indexName);
           break;
         case "crpget":    // Send CRP from /crpp to requester
           requestHandler = new RequestHandlerCrpGet(servlet, request, indexName);
+          break;
+        case "crplist": // List available CRPs for one or all user(s)
+          requestHandler = new RequestHandlerCrpList(servlet, request, indexName);
           break;
         case "crpset":    // Requester sends a CRP to the /crpp
           requestHandler = new RequestHandlerCrpSet(servlet, request, indexName);
@@ -235,6 +238,9 @@ public abstract class RequestHandler {
           break;
         case "serverinfo":  // Information about corpora
           requestHandler = new RequestHandlerServerInfo(servlet, request, indexName);
+          break;
+        case "settings":    // User settings
+          requestHandler = new RequestHandlerSettings(servlet, request, indexName);
           break;
         case "show":    // A summary of the details of the indicated CRP
           requestHandler = new RequestHandlerShow(servlet, request, indexName);

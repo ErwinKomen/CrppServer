@@ -99,6 +99,10 @@ public class RequestHandlerExecute extends RequestHandler {
         logger.debug("Cache is not defined!!! jReq=" + jReq.toString());
       }
       
+      // User settings: connect "crp" with "lng+dir"
+      crpManager.addUserSettingsCrpLng(sCurrentUserId, sCrpName, sLng, sFocus);
+      // Set this CR as the most recent project
+      crpManager.addUserSettings(sCurrentUserId, "recent", sCrpName);
       
       // Create the query parameters myself: lng, crp, dir, userid, save
       JSONObject oQuery = new JSONObject();
