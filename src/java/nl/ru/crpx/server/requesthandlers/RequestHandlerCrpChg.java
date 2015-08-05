@@ -83,18 +83,18 @@ public class RequestHandlerCrpChg extends RequestHandler {
       // Load the correct crp container
       CorpusResearchProject crpChg = crpManager.getCrp(sCrpName, sCurrentUserId);
       // Process the 'value' change in the 'key' within [crpChg]
-      crpChg.doChange(sChgKey, sChgValue);
-      
-      
-      // TODO: change this section...
-      // Check if this has the .crpx ending
-      if (!sCrpName.endsWith(".crpx")) sCrpName += ".crpx";
-      // Save the CRP to an appropriate location
-      String sProjectPath = RequestHandler.getCrpPath(sCrpName, sCurrentUserId);
+      boolean bChanged = crpChg.doChange(sChgKey, sChgValue);
+      if (bChanged) {
+        // Save the changes
+        crpChg.Save();
+      }
       
       // Content part
       DataObjectMapElement objContent = new DataObjectMapElement();
-      objContent.put("key", sCrpName);
+      objContent.put("key", sChgKey);
+      objContent.put("value", sChgValue);
+      objContent.put("crp", sCrpName);
+      objContent.put("changed", bChanged);
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
       objStatus.put("code", "completed");
