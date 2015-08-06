@@ -80,6 +80,7 @@ public class RequestHandlerStatusXq  extends RequestHandler {
           objContent.put("searchParam", searchParam.toDataObject());
           objContent.put("searchTime", search.executionTimeMillis());
           objContent.put("searchDone", search.finished());
+          objContent.put("query", search.getJobQuery());        // The 'query' contains the original request parameters
           objContent.put("taskid", search.getJobTaskId());
           objContent.put("table", search.getJobTable());
           // Take over SOME values from the JobProgress
