@@ -69,7 +69,7 @@ public class RequestHandlerStatusXq  extends RequestHandler {
             sResult = errHandle.getErrList().toString() + "\n";
           // Get the list of XQ errors
           List<JSONObject> arErr = search.getJobErrors();
-          if (arErr.size() > 0)
+          if (arErr != null && arErr.size() > 0)
             for (int i=0;i<arErr.size();i++)
               sResult += arErr.get(i).toString() + "\n";
           String sJobRes = search.getJobResult();
