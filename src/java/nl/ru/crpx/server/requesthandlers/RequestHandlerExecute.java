@@ -156,6 +156,9 @@ public class RequestHandlerExecute extends RequestHandler {
         // Add the project name as parameter (but not as "query"!!!)
         this.searchParam.put("name", sCrpName);
 
+        // Set the language and part values
+        prjThis.setLanguage(sLng);
+        prjThis.setPart(sFocus);
         // Get the directory associated with "lng" and "dir"
         String sTarget = servlet.getSearchManager().getCorpusPartDir(sLng, sFocus);
         // Validate
