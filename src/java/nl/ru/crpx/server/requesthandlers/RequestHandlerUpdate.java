@@ -20,7 +20,7 @@ import nl.ru.util.json.JSONObject;
 import nl.ru.xmltools.XmlAccess;
 import nl.ru.xmltools.XmlAccessPsdx;
 import nl.ru.xmltools.XmlDocument;
-import nl.ru.xmltools.XmlIndexReader;
+import nl.ru.xmltools.XmlIndexTgReader;
 import org.apache.log4j.Logger;
 
 /*
@@ -61,7 +61,7 @@ public class RequestHandlerUpdate extends RequestHandler {
   private CrpManager crpManager;
   private Processor objSaxon;               // Local access to the processor
   private DocumentBuilder objSaxDoc;        // My own document-builder
-  private XmlIndexReader objXmlRdr=null;    // Index reader for current file
+  private XmlIndexTgReader objXmlRdr=null;    // Index reader for current file
   private File objCurrentFile = null;       // File we are working on now
   private String loc_xpWords = "";          // Xpath expression to get to the words
   private ProjType iPrjType;                // Type of current project (psdx/folia...)

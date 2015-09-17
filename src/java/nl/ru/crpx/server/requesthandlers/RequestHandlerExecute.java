@@ -157,7 +157,7 @@ public class RequestHandlerExecute extends RequestHandler {
         this.searchParam.put("name", sCrpName);
 
         // Set the language and part values
-        prjThis.setLanguage(sLng);
+        prjThis.setLanguage(sLng);    // Note: the language is only set if the correct SETTING is available
         prjThis.setPart(sFocus);
         // Get the directory associated with "lng" and "dir"
         String sTarget = servlet.getSearchManager().getCorpusPartDir(sLng, sFocus);
