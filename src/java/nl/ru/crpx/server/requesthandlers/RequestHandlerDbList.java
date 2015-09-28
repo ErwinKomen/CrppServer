@@ -54,7 +54,7 @@ public class RequestHandlerDbList extends RequestHandler {
       else
         sCurrentUserId = "";
       // Check for a filter
-      String sFilter = "";
+      String sFilter = "*.xml";
       if (jReq.has("filter"))
         sFilter = jReq.getString("filter");
       // Get a list of all the databases available for the indicated user

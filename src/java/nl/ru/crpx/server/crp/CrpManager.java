@@ -599,6 +599,16 @@ public class CrpManager {
     List<String> lUsers;  // List of crpx
     
     try {
+      // Adapt the filter [sFileName] if required
+      if (! sFileName.endsWith(".xml")) {
+        // Check if it is empty
+        if (sFileName.isEmpty()) 
+          sFileName = "*.xml";
+        else {
+          // Add the ".xml" extension
+          sFileName += ".xml";
+        }
+      }
       // Create a list to reply
       DataObjectList arList = new DataObjectList("dblist");
       // Get a path to the users
@@ -617,8 +627,10 @@ public class CrpManager {
           String sUser = pathUser.getFileName().toString();
           // Is this the user we are looking for?
           if (sUserId.isEmpty() || sUser.equals(sUserId)) {
+            // Get to the "dbase" directory of this user
+            Path pathUserDb = (new File(pathUser.toString() + "/dbase")).toPath();
             // Get all the Database .xml files in the user's directory
-            DirectoryStream<Path> streamDb = Files.newDirectoryStream(pathUser, sFileName);
+            DirectoryStream<Path> streamDb = Files.newDirectoryStream(pathUserDb, sFileName);
             for (Path pathDb : streamDb) {
               // Get the name of this database
               String sDbase = pathDb.getFileName().toString();
@@ -634,7 +646,7 @@ public class CrpManager {
                 String sLng = "";
                 String sDir = "";
                 // Make sure the User/dbase combination is stored
-                XmlNode ndxHeader = getDbaseHeader(sDbase);
+                XmlNode ndxHeader = getDbaseHeader(pathDb.toString());
                 if (ndxHeader != null) {
                   XmlNode ndxLang = ndxHeader.SelectSingleNode("./descendant::Language");
                   if (ndxLang != null) {
@@ -699,6 +711,29 @@ public class CrpManager {
     } catch (Exception ex) {
       errHandle.DoError("Could not get database header", ex, CrpManager.class);
       return null;
+    }
+  }
+  
+  /**
+   * getDbPath -- get the absolute path to database [sDbName] for user [sUserId]
+   * 
+   * @param sDbName - name of the database with or without the extension .xml
+   * @param sUserId - id of user
+   * @return        - absolute path to database
+   * @history
+   *  28/sep/2015 ERK Created
+   */
+  public String getDbPath(String sDbName, String sUserId) {
+    try {
+      // Do we need to add the database extension?
+      if (!sDbName.endsWith(".xml")) sDbName += ".xml";
+      // Figure out the expected location
+      String sDbLoc = FileUtil.nameNormalize(sProjectBase + "/dbase/" + sUserId + "/" + sDbName);
+      // Return the expected location
+      return sDbLoc;
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get database path", ex, CrpManager.class);
+      return "";      
     }
   }
   
