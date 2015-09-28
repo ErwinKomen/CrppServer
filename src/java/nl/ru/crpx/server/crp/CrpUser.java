@@ -7,7 +7,6 @@
  */
 package nl.ru.crpx.server.crp;
 
-import java.io.File;
 import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.server.CrpPserver;

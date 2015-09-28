@@ -16,6 +16,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import net.sf.saxon.s9api.DocumentBuilder;
+import net.sf.saxon.s9api.Processor;
+import net.sf.saxon.s9api.QName;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
@@ -27,6 +30,9 @@ import nl.ru.util.ByRef;
 import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
+import nl.ru.xmltools.XmlDocument;
+import nl.ru.xmltools.XmlIndexRaReader;
+import nl.ru.xmltools.XmlNode;
 
 /**
  * CrpManager
@@ -37,10 +43,16 @@ import nl.ru.util.json.JSONObject;
 public class CrpManager {
   // ================ Local variables ==========================================
   ErrHandle errHandle;                  // The error handler we are using
+  // ========================================== Constants ======================
+  protected static final QName loc_xq_ResId = new QName("", "", "ResId");
+  protected static final String loc_path_Result = "./descendant-or-self::Result[1]";
+  protected static final String loc_path_General = "./descendant-or-self::General[1]";
   // ================ Static variables =========================================
   static List<CrpUser> loc_crpUserList; // List of CrpUser elements
   static int loc_id;                    // the Id of each CrpUser element
   static CrpPserver servlet;            // My own link to the search manager
+  static Processor objSaxon;
+  static DocumentBuilder objSaxDoc;
   // ================ Class initialisation =====================================
   public CrpManager(CrpPserver servlet, ErrHandle errHandle) {
     // Initialize the id
@@ -49,6 +61,10 @@ public class CrpManager {
     this.errHandle = errHandle;
     // Set my own link to the search manager
     this.servlet = servlet;
+    // Get a new saxon processor
+    this.objSaxon = new Processor(false);
+    // Create a document builder
+    this.objSaxDoc = this.objSaxon.newDocumentBuilder();
     // Initialise the list
     loc_crpUserList = new ArrayList<>();
   }
@@ -58,7 +74,6 @@ public class CrpManager {
    * Either create a new CrpUser object, or get an already existing one
    * 
    * @param sProjectName
-   * @param sLngIndex
    * @param sUserId
    * @return 
    */
@@ -141,7 +156,8 @@ public class CrpManager {
         oSettings = new JSONObject();
         oSettings.put("userid", sUserId);
         oSettings.put("links", new JSONArray());
-        // Wrtie the default settings
+        oSettings.put("dbases", new JSONArray());
+        // Write the default settings
         setUserSettings(sUserId, oSettings);
       }
       // Double check existence
@@ -170,6 +186,7 @@ public class CrpManager {
     try {
       // Default initialisations
       DataObjectList arLinksList = new DataObjectList("links");
+      DataObjectList arDbaseList = new DataObjectList("dbases");
       // Try get settings file
       String sFile = FileUtil.nameNormalize(sProjectBase+sUserId+"/settings.json");
       File fSettings = new File(sFile);
@@ -203,12 +220,31 @@ public class CrpManager {
               }
               // Add this element to the settings object
               oSettings.put("links", arLinksList);
+              break;
+            case "dbases":
+              // This is an array of objects
+              JSONArray arDbases = oJsonSet.getJSONArray("dbases");
+              for (int i=0;i<arDbases.length(); i++) {
+                // Get this object
+                JSONObject oThis = arDbases.getJSONObject(i);
+                // Create a new object
+                DataObjectMapElement oLink = new DataObjectMapElement();
+                oLink.put("dbase", oThis.getString("dbase"));
+                oLink.put("lng", oThis.getString("lng"));
+                oLink.put("dir", oThis.getString("dir"));
+                // Add the object to the list
+                arDbaseList.add(oLink);
+              }
+              // Add this element to the settings object
+              oSettings.put("links", arDbaseList);
+              break;
           }
         }
       } else {
         // Create a default one
         oSettings.put("userid", sUserId);
         oSettings.put("links", arLinksList);
+        oSettings.put("dbases", arDbaseList);
       }
       // Return what we found
       return oSettings;
@@ -255,6 +291,66 @@ public class CrpManager {
       }
       // Add the key/value pair
       oSettings.put(sKey, sValue);
+      // Save the adapted settings
+      setUserSettings(sUserId, oSettings);
+    } catch (Exception ex) {
+      errHandle.DoError("Could not add to user settings", ex, CrpManager.class);
+    }
+  }
+  
+  /**
+   * addUserSettingsDbLng
+   *    Add a link between a database and Lng/Dir for a user
+   * 
+   * @param sUserId
+   * @param sDbName
+   * @param sLng
+   * @param sDir 
+   */
+  public void addUserSettingsDbLng(String sUserId, String sDbName,
+          String sLng, String sDir) {
+    JSONArray arDbases; // Array of dbase objects
+    
+    try {
+      // Read the current settings
+      JSONObject oSettings = getUserSettings(sUserId);
+      // Validate
+      if (oSettings==null) {
+        errHandle.DoError("Could not add to user settings");
+        return;
+      }
+      // Get the JSON databases array
+      if (oSettings.has("dbases")) 
+        arDbases = oSettings.getJSONArray("dbases");
+      else
+        arDbases = new JSONArray();
+      
+      // Does the link exist already?
+      boolean bExists = false;
+      JSONObject oDbase = null;
+      for (int i=0;i<arDbases.length();i++) {
+        oDbase = arDbases.getJSONObject(i);
+        if (oDbase.getString("dbase").equals(sDbName)) {
+          bExists = true;
+          // Adapt the information
+          oDbase.put("lng", sLng);
+          oDbase.put("dir", sDir);
+          // Replace it
+          arDbases.put(i, oDbase);
+          break;
+        }
+      }
+      // Do we have it?
+      if (!bExists) {
+        // Add the link
+        oDbase = new JSONObject();
+        oDbase.put("dbase", sDbName);
+        oDbase.put("lng", sLng);
+        oDbase.put("dir", sDir);
+        arDbases.put(oDbase);
+      }
+      // Add or replace the information
+      oSettings.put("dbases", arDbases);
       // Save the adapted settings
       setUserSettings(sUserId, oSettings);
     } catch (Exception ex) {
@@ -320,7 +416,7 @@ public class CrpManager {
    *    Check for user sUserId if he has a default LNG/DIR for project sCrpName
    * 
    * @param sUserId
-   * @param sCrpname
+   * @param sCrpName
    * @return 
    */
   public JSONObject getUserLinkCrp(String sUserId, String sCrpName) {
@@ -347,6 +443,42 @@ public class CrpManager {
       return null;
     } catch (Exception ex) {
       errHandle.DoError("Could not get user link crp info", ex, CrpManager.class);
+      return null;
+    }
+  }
+  
+    /**
+   * getUserLinkDb
+   *    Check for user sUserId if he has a default LNG/DIR for database sDbName
+   * 
+   * @param sUserId   - Identifier of the user
+   * @param sDbName   - Name of the database
+   * @return 
+   */
+  public JSONObject getUserLinkDb(String sUserId, String sDbName) {
+    try {
+      // Read the current settings
+      JSONObject oSettings = getUserSettings(sUserId);
+      // Validate
+      if (oSettings==null) {
+        errHandle.DoError("Could not get user settings");
+        return null;
+      }
+      // Get the JSON linking array for databases
+      JSONArray arDbases = oSettings.getJSONArray("dbases");
+      // Does the database link exist?
+      JSONObject oDbase = null;
+      for (int i=0;i<arDbases.length();i++) {
+        oDbase = arDbases.getJSONObject(i);
+        if (oDbase.getString("dbase").equals(sDbName)) {
+          // Return the link object
+          return oDbase;
+        }
+      }
+      // Getting here means: no result
+      return null;
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get user link dbase info", ex, CrpManager.class);
       return null;
     }
   }
@@ -452,6 +584,123 @@ public class CrpManager {
       return null;
     }
   }
+  /**
+   * getDbList -- get a list of the corpus research databases (.xml) for the
+   *              indicated user
+   * 
+   * @param sUserId
+   * @return 
+   */
+  public DataObject getDbList(String sUserId) {
+    return getDbList(sUserId, "*.xml");
+  }
+  public DataObject getDbList(String sUserId, String sFileName) {
+    String sUserPath;     // Where the users are stored
+    List<String> lUsers;  // List of crpx
+    
+    try {
+      // Create a list to reply
+      DataObjectList arList = new DataObjectList("dblist");
+      // Get a path to the users
+      sUserPath = FileUtil.nameNormalize(sProjectBase);
+      if (sUserPath.isEmpty()) return arList;
+      // Initialise
+      lUsers = new ArrayList<>();
+      Path dir = Paths.get(sUserPath);
+      // Get all the items inside "dir"
+      try(DirectoryStream<Path> streamUser = Files.newDirectoryStream(dir)) {
+        // Walk all these items
+        for (Path pathUser : streamUser) {
+          // Add the directory to the list of users
+          lUsers.add(pathUser.toAbsolutePath().toString());
+          // Get the user
+          String sUser = pathUser.getFileName().toString();
+          // Is this the user we are looking for?
+          if (sUserId.isEmpty() || sUser.equals(sUserId)) {
+            // Get all the Database .xml files in the user's directory
+            DirectoryStream<Path> streamDb = Files.newDirectoryStream(pathUser, sFileName);
+            for (Path pathDb : streamDb) {
+              // Get the name of this database
+              String sDbase = pathDb.getFileName().toString();
+              // Okay, create a reply object
+              DataObjectMapElement oData = new DataObjectMapElement();
+              oData.put("userid", sUser);
+              oData.put("dbase", sDbase);
+              String sDbPath = pathDb.toString();
+              oData.put("file", sDbPath);
+              // Get any lng/dir info
+              JSONObject oDbase = getUserLinkDb(sUserId, sDbase);
+              if (oDbase == null) {
+                String sLng = "";
+                String sDir = "";
+                // Make sure the User/dbase combination is stored
+                XmlNode ndxHeader = getDbaseHeader(sDbase);
+                if (ndxHeader != null) {
+                  XmlNode ndxLang = ndxHeader.SelectSingleNode("./descendant::Language");
+                  if (ndxLang != null) {
+                    sLng = ndxLang.getNodeValue();
+                  }
+                  XmlNode ndxDir = ndxHeader.SelectSingleNode("./descendant::Part");
+                  if (ndxDir != null) {
+                    sDir = ndxDir.getNodeValue();
+                  }
+                }
+                addUserSettingsDbLng(sUserId, sDbase, sLng, sDir);
+                // Try get the link once more
+                oDbase = getUserLinkDb(sUserId, sDbase);
+              } 
+              // Do we have some kind of linking information?
+              if (oDbase != null) {
+                // Add the lng and dir info
+                oData.put("lng", oDbase.getString("lng"));
+                oData.put("dir", oDbase.getString("dir"));
+              }
+              // Include the object here
+              arList.add(oData);
+            }
+          }
+        }        
+      }
+      
+      // Sort the result
+      arList.sort("dbase");
+      // Return the array
+      return arList;      
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get a list of Database-User objects", ex, CrpManager.class);
+      return null;
+    }
+  }
+  
+  /**
+   * getDbaseHeader - get the header of the database as XML node
+   * 
+   * @param sDbPath
+   * @return 
+   */
+  private XmlNode getDbaseHeader(String sDbPath) {
+    XmlNode ndxBack = null; // What we will return
+    
+    try {
+      // Set a new XML document
+      XmlDocument pdxThis = new XmlDocument(this.objSaxDoc, this.objSaxon);
+      // (1) get a handle to the database
+      File fDbase = new File(sDbPath);
+      XmlIndexRaReader fDbRa = new XmlIndexRaReader(fDbase, null, pdxThis, CorpusResearchProject.ProjType.Dbase);
+      // Do we have a header?
+      String sHeader = fDbRa.getHeader();
+      if (!sHeader.isEmpty()) {
+        // Load this obligatory <General> header 
+        pdxThis.LoadXml(sHeader);
+        ndxBack =pdxThis.SelectSingleNode(loc_path_General);
+      }
+      // Return the result
+      return ndxBack;
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get database header", ex, CrpManager.class);
+      return null;
+    }
+  }
   
   /**
    * hasCrpUser - does user @sUserId have the project named @sProjectName
@@ -498,6 +747,36 @@ public class CrpManager {
         // Check if this has the correct project name, language index and user id
         if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)
                 /* && oCrpUser.lngIndex.equals(sLngIndex) */) {
+          // We found it: now remove it
+          errHandle.debug("removing CrpUser: [" + sProjectName + 
+              ", " + /* sLngIndex + ", " + */  sUserId + "]", CrpManager.class);
+          loc_crpUserList.remove(oCrpUser);
+          // Return positively
+          return true;
+        } 
+      } 
+      // Return failure: we didn't find it
+      return false;
+    } catch (Exception ex) {
+      errHandle.DoError("Could not remove CRP-User object", ex, CrpManager.class);
+      return false;
+    }
+  }
+/**
+   * removeDbUser
+   * Remove the DbUser object satisfying the indicated conditions
+   * 
+   * @param sProjectName
+   * // @param sLngIndex
+   * @param sUserId
+   * @return 
+   */
+  public boolean removeDbUser(String sProjectName, String sUserId) {
+    try {
+      // Check if this combination already exists in the list
+      for (CrpUser oCrpUser : loc_crpUserList) {
+        // Check if this has the correct project name, language index and user id
+        if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)) {
           // We found it: now remove it
           errHandle.debug("removing CrpUser: [" + sProjectName + 
               ", " + /* sLngIndex + ", " + */  sUserId + "]", CrpManager.class);

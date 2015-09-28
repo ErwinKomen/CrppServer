@@ -235,11 +235,6 @@ public class RequestHandlerExecute extends RequestHandler {
         search.getJobProgress();
       } else {
         // Search is done; Create a JSONObject with the correct status and content parts
-        // String sCount = search.getJobCount().toString();
-        // String sRes = search.getJobResult();
-        // The objContent (done last because the count might be done by this time)
-        // objContent.put("count", sCount);
-        // objContent.put("table", sRes);
         objContent.put("table", search.getJobTable());
 
         // Prepare a status object to return
