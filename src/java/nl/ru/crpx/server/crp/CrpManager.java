@@ -456,6 +456,7 @@ public class CrpManager {
    * @return 
    */
   public JSONObject getUserLinkDb(String sUserId, String sDbName) {
+    JSONArray arDbases;
     try {
       // Read the current settings
       JSONObject oSettings = getUserSettings(sUserId);
@@ -465,7 +466,10 @@ public class CrpManager {
         return null;
       }
       // Get the JSON linking array for databases
-      JSONArray arDbases = oSettings.getJSONArray("dbases");
+      if (oSettings.has("dbases"))
+        arDbases = oSettings.getJSONArray("dbases");
+      else
+        arDbases = new JSONArray();
       // Does the database link exist?
       JSONObject oDbase = null;
       for (int i=0;i<arDbases.length();i++) {
@@ -628,47 +632,52 @@ public class CrpManager {
           // Is this the user we are looking for?
           if (sUserId.isEmpty() || sUser.equals(sUserId)) {
             // Get to the "dbase" directory of this user
-            Path pathUserDb = (new File(pathUser.toString() + "/dbase")).toPath();
-            // Get all the Database .xml files in the user's directory
-            DirectoryStream<Path> streamDb = Files.newDirectoryStream(pathUserDb, sFileName);
-            for (Path pathDb : streamDb) {
-              // Get the name of this database
-              String sDbase = pathDb.getFileName().toString();
-              // Okay, create a reply object
-              DataObjectMapElement oData = new DataObjectMapElement();
-              oData.put("userid", sUser);
-              oData.put("dbase", sDbase);
-              String sDbPath = pathDb.toString();
-              oData.put("file", sDbPath);
-              // Get any lng/dir info
-              JSONObject oDbase = getUserLinkDb(sUserId, sDbase);
-              if (oDbase == null) {
-                String sLng = "";
-                String sDir = "";
-                // Make sure the User/dbase combination is stored
-                XmlNode ndxHeader = getDbaseHeader(pathDb.toString());
-                if (ndxHeader != null) {
-                  XmlNode ndxLang = ndxHeader.SelectSingleNode("./descendant::Language");
-                  if (ndxLang != null) {
-                    sLng = ndxLang.getNodeValue();
+            String sUserDb = pathUser.toString() + "/dbase";
+            File fUserDb = new File(sUserDb);
+            // Does this file exist?
+            if (fUserDb.exists()) {
+              Path pathUserDb = fUserDb.toPath();
+              // Get all the Database .xml files in the user's directory
+              DirectoryStream<Path> streamDb = Files.newDirectoryStream(pathUserDb, sFileName);
+              for (Path pathDb : streamDb) {
+                // Get the name of this database
+                String sDbase = pathDb.getFileName().toString();
+                // Okay, create a reply object
+                DataObjectMapElement oData = new DataObjectMapElement();
+                oData.put("userid", sUser);
+                oData.put("dbase", sDbase);
+                String sDbPath = pathDb.toString();
+                oData.put("file", sDbPath);
+                // Get any lng/dir info
+                JSONObject oDbase = getUserLinkDb(sUserId, sDbase);
+                if (oDbase == null) {
+                  String sLng = "";
+                  String sDir = "";
+                  // Make sure the User/dbase combination is stored
+                  XmlNode ndxHeader = getDbaseHeader(pathDb.toString());
+                  if (ndxHeader != null) {
+                    XmlNode ndxLang = ndxHeader.SelectSingleNode("./descendant::Language");
+                    if (ndxLang != null) {
+                      sLng = ndxLang.getNodeValue();
+                    }
+                    XmlNode ndxDir = ndxHeader.SelectSingleNode("./descendant::Part");
+                    if (ndxDir != null) {
+                      sDir = ndxDir.getNodeValue();
+                    }
                   }
-                  XmlNode ndxDir = ndxHeader.SelectSingleNode("./descendant::Part");
-                  if (ndxDir != null) {
-                    sDir = ndxDir.getNodeValue();
-                  }
+                  addUserSettingsDbLng(sUserId, sDbase, sLng, sDir);
+                  // Try get the link once more
+                  oDbase = getUserLinkDb(sUserId, sDbase);
+                } 
+                // Do we have some kind of linking information?
+                if (oDbase != null) {
+                  // Add the lng and dir info
+                  oData.put("lng", oDbase.getString("lng"));
+                  oData.put("dir", oDbase.getString("dir"));
                 }
-                addUserSettingsDbLng(sUserId, sDbase, sLng, sDir);
-                // Try get the link once more
-                oDbase = getUserLinkDb(sUserId, sDbase);
-              } 
-              // Do we have some kind of linking information?
-              if (oDbase != null) {
-                // Add the lng and dir info
-                oData.put("lng", oDbase.getString("lng"));
-                oData.put("dir", oDbase.getString("dir"));
+                // Include the object here
+                arList.add(oData);
               }
-              // Include the object here
-              arList.add(oData);
             }
           }
         }        
