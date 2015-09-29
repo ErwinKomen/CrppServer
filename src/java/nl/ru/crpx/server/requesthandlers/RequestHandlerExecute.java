@@ -57,6 +57,7 @@ public class RequestHandlerExecute extends RequestHandler {
       //   {  "lng": "eng_hist",
       //      "crp": "V2_versie11.crpx",
       //      "dir": "OE",
+      //      "dbase": "bladi.xml",
       //      "cache": false,
       //      "userid": "erkomen" }
       sReqArgument = getReqString(request);
@@ -87,6 +88,8 @@ public class RequestHandlerExecute extends RequestHandler {
       if (jReq.has("userid")) userId = jReq.getString("userid");
       sCurrentUserId = userId;
       String sFocus = (jReq.has("dir")) ? jReq.getString("dir") : "";
+      // Get optional database input
+      String sDbase = (jReq.has("dbase")) ? jReq.getString("dbase") : "";
       // Normally do caching
       boolean bCache = (jReq.has("cache")) ? jReq.getBoolean("cache") : true;
       // NOTE: the save DATE is the date when the CRP file was saved (on the server)
@@ -104,11 +107,12 @@ public class RequestHandlerExecute extends RequestHandler {
       // Set this CR as the most recent project
       crpManager.addUserSettings(sCurrentUserId, "recent", sCrpName);
       
-      // Create the query parameters myself: lng, crp, dir, userid, save
+      // Create the query parameters myself: lng, crp, dir, dbase, userid, save
       JSONObject oQuery = new JSONObject();
       oQuery.put("lng", sLng);
       oQuery.put("crp", sCrpName);
       oQuery.put("dir", sFocus);
+      oQuery.put("dbase", sDbase);
       oQuery.put("userid", (jReq.has("userid")) ? jReq.getString("userid") : "");
       oQuery.put("save", sSave);  // Save date of the CRP!!
       // The 'query' consists of [lng, crp, dir, userid, save]
@@ -159,6 +163,12 @@ public class RequestHandlerExecute extends RequestHandler {
         // Set the language and part values
         prjThis.setLanguage(sLng);    // Note: the language is only set if the correct SETTING is available
         prjThis.setPart(sFocus);
+        if (!sDbase.isEmpty()) {
+          prjThis.setDbaseInput("True");  // Indicate that there is database input
+          prjThis.setSource(sDbase);      // Set the database to be used as input
+        } else
+          prjThis.setDbaseInput("False"); // Indicate specifically that there is no database input
+        
         // Get the directory associated with "lng" and "dir"
         String sTarget = servlet.getSearchManager().getCorpusPartDir(sLng, sFocus);
         // Validate
