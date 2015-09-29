@@ -82,6 +82,10 @@ public class RequestHandlerCrpChg extends RequestHandler {
       String sCrpName = jReq.getString("crp");
       // Load the correct crp container
       CorpusResearchProject crpChg = crpManager.getCrp(sCrpName, sCurrentUserId);
+      // Validate result
+      if (crpChg == null)
+        return DataObject.errorObject("availability", 
+                "The /crpchg request looks for a CRP that is not there");
       // Process the 'value' change in the 'key' within [crpChg]
       boolean bChanged = crpChg.doChange(sChgKey, sChgValue);
       if (bChanged) {
