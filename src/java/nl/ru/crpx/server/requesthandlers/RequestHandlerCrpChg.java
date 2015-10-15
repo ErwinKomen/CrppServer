@@ -60,6 +60,7 @@ public class RequestHandlerCrpChg extends RequestHandler {
       //   {  "userid": "erkomen",
       //      "crp":    "ParticleA.crpx",
       //      "key":    "Goal",
+      //      "id":     -1,
       //      "value":  "This CRP serves as an example" }
       sReqArgument = getReqString(request);
       logger.debug("Considering request /crpchg: " + sReqArgument);
@@ -73,9 +74,12 @@ public class RequestHandlerCrpChg extends RequestHandler {
           "The /crpchg request must contain: key.");
       if (!jReq.has("value")) return DataObject.errorObject("syntax", 
           "The /crpchg request must contain: value.");
-      // Get the key and value
+      if (!jReq.has("id")) return DataObject.errorObject("syntax", 
+          "The /crpchg request must contain: id.");
+      // Get the key and value and id
       String sChgKey = jReq.getString("key");
       String sChgValue = jReq.getString("value");
+      int iChgId = jReq.getInt("id");
       // Get the CRP NAME
       if (!jReq.has("crp"))return DataObject.errorObject("syntax", 
           "The /crpchg request must contain: crp (name of the crp).");
@@ -87,7 +91,7 @@ public class RequestHandlerCrpChg extends RequestHandler {
         return DataObject.errorObject("availability", 
                 "The /crpchg request looks for a CRP that is not there");
       // Process the 'value' change in the 'key' within [crpChg]
-      boolean bChanged = crpChg.doChange(sChgKey, sChgValue);
+      boolean bChanged = crpChg.doChange(sChgKey, sChgValue, iChgId);
       if (bChanged) {
         // Save the changes
         crpChg.Save();
@@ -97,6 +101,7 @@ public class RequestHandlerCrpChg extends RequestHandler {
       DataObjectMapElement objContent = new DataObjectMapElement();
       objContent.put("key", sChgKey);
       objContent.put("value", sChgValue);
+      objContent.put("id", iChgId);
       objContent.put("crp", sCrpName);
       objContent.put("changed", bChanged);
       // Prepare a status object to return
