@@ -63,7 +63,10 @@ public class RequestHandlerCrpChg extends RequestHandler {
       //      "id":     -1,
       //      "value":  "This CRP serves as an example" }
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /crpchg: " + sReqArgument);
+      if (sReqArgument.length() > 100)
+        logger.debug("Considering request /crpchg: [" + sReqArgument.substring(0, 100) + "...]");
+      else
+        logger.debug("Considering request /crpchg: [" + sReqArgument + "]");
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       if (!jReq.has("userid")) return DataObject.errorObject("syntax", 
@@ -78,7 +81,8 @@ public class RequestHandlerCrpChg extends RequestHandler {
           "The /crpchg request must contain: id.");
       // Get the key and value and id
       String sChgKey = jReq.getString("key");
-      String sChgValue = jReq.getString("value");
+      // String sChgValue = jReq.getString("value");
+      String sChgValue = unescapeHexCoding(jReq.getString("value"));
       int iChgId = jReq.getInt("id");
       // Get the CRP NAME
       if (!jReq.has("crp"))return DataObject.errorObject("syntax", 

@@ -353,7 +353,12 @@ public abstract class RequestHandler {
           sValue = sName;
           sName = "query";
         }
-        errHandle.debug("Parameter [" + sName + "]=[" + sValue + "]");  
+        if (!sValue.isEmpty()) {
+          if (sValue.length() > 100)
+            errHandle.debug("Parameter [" + sName + "]=[" + sValue.substring(0, 100) + "...]");  
+          else
+            errHandle.debug("Parameter [" + sName + "]=[" + sValue + "]");  
+        }
         oBack.put(sName, sValue);
       }
       // If we have a good object, return now
