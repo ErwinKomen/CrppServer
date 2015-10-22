@@ -63,10 +63,13 @@ public class RequestHandlerCrpChg extends RequestHandler {
       //      "id":     -1,
       //      "value":  "This CRP serves as an example" }
       sReqArgument = getReqString(request);
+      logger.debug("Considering request /crpchg: [" + sReqArgument + "]");
+        /*
       if (sReqArgument.length() > 100)
         logger.debug("Considering request /crpchg: [" + sReqArgument.substring(0, 100) + "...]");
       else
         logger.debug("Considering request /crpchg: [" + sReqArgument + "]");
+                */
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       if (!jReq.has("userid")) return DataObject.errorObject("syntax", 
