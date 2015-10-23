@@ -312,6 +312,8 @@ public abstract class RequestHandler {
       if (oReq.has("query")) {
         // sJsonPart = oReq.getJSONObject("query").toString();
         sJsonPart = oReq.getString("query");
+      } else {
+        sJsonPart = oReq.toString();
       }
       
       // Return the JSON query part
@@ -341,6 +343,11 @@ public abstract class RequestHandler {
         // Perhaps this is a POST request? Try to get POST parameter
         sQueryIdArg = request.getParameter("args");    
         sMethod = "POST";
+      } else if (sQueryIdArg.startsWith("{")) {
+        // It is GET, but it is a JSON string, URL-encoded - decode it
+        sQueryIdArg = URLDecoder.decode(sQueryIdArg, "UTF-8");
+        oBack = new JSONObject(sQueryIdArg);
+        return oBack;
       }
       // ============= Debugging ==================
       errHandle.debug("getReqObject #2: ["+ sMethod + "] string = [" + sQueryIdArg + "]");
