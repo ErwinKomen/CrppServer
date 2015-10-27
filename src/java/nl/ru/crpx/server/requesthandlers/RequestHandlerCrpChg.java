@@ -1,25 +1,26 @@
-package nl.ru.crpx.server.requesthandlers;
-
-import javax.servlet.http.HttpServletRequest;
-import nl.ru.crpx.dataobject.DataObject;
-import nl.ru.crpx.dataobject.DataObjectList;
-import nl.ru.crpx.dataobject.DataObjectMapElement;
-import nl.ru.crpx.project.CorpusResearchProject;
-import nl.ru.crpx.server.CrpPserver;
-import nl.ru.crpx.server.crp.CrpManager;
-import nl.ru.util.FileUtil;
-import static nl.ru.util.StringUtil.unescapeHexCoding;
-import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
-
-/*
+/**
+ * Copyright (c) 2015 CLARIN-NL.
+ * All rights reserved.
+ *
  * This software has been developed at the "Meertens Instituut"
  *   for the CLARIN project "CorpusStudio-WebApplication".
  * The application is based on the "CorpusStudio" program written by Erwin R. Komen
  *   while working for the Radboud University Nijmegen.
  * The program and the source can be freely used and re-distributed.
+ * 
+ * @author Erwin R. Komen
  */
+package nl.ru.crpx.server.requesthandlers;
 
+import javax.servlet.http.HttpServletRequest;
+import nl.ru.crpx.dataobject.DataObject;
+import nl.ru.crpx.dataobject.DataObjectMapElement;
+import nl.ru.crpx.project.CorpusResearchProject;
+import nl.ru.crpx.server.CrpPserver;
+import nl.ru.crpx.server.crp.CrpManager;
+import static nl.ru.util.StringUtil.unescapeHexCoding;
+import nl.ru.util.json.JSONObject;
+import org.apache.log4j.Logger;
 
 /**
  * RequestHandlerCrpChg
@@ -64,39 +65,30 @@ public class RequestHandlerCrpChg extends RequestHandler {
       //      "value":  "This CRP serves as an example" }
       sReqArgument = getReqString(request);
       logger.debug("Considering request /crpchg: [" + sReqArgument + "]");
-        /*
-      if (sReqArgument.length() > 100)
-        logger.debug("Considering request /crpchg: [" + sReqArgument.substring(0, 100) + "...]");
-      else
-        logger.debug("Considering request /crpchg: [" + sReqArgument + "]");
-                */
-      // Take apart the request object
+      // Convert request object into JSON
       JSONObject jReq = new JSONObject(sReqArgument);
-      if (!jReq.has("userid")) return DataObject.errorObject("syntax", 
-          "The /crpchg request must contain: userid.");
+            
+      // Validate the parameters
+      if (!jReq.has("userid")) return DataObject.errorObject("syntax", "The /crpchg request must contain: userid.");
+      if (!jReq.has("key")) return DataObject.errorObject("syntax", "The /crpchg request must contain: key.");
+      if (!jReq.has("value")) return DataObject.errorObject("syntax", "The /crpchg request must contain: value.");
+      if (!jReq.has("id")) return DataObject.errorObject("syntax", "The /crpchg request must contain: id.");
+      if (!jReq.has("crp"))return DataObject.errorObject("syntax", "The /crpchg request must contain: crp (name of the crp).");
+      
+      // Retrieve and process the parameters 
       sCurrentUserId = jReq.getString("userid");
-      // Key and value are required
-      if (!jReq.has("key")) return DataObject.errorObject("syntax", 
-          "The /crpchg request must contain: key.");
-      if (!jReq.has("value")) return DataObject.errorObject("syntax", 
-          "The /crpchg request must contain: value.");
-      if (!jReq.has("id")) return DataObject.errorObject("syntax", 
-          "The /crpchg request must contain: id.");
-      // Get the key and value and id
+      // Get the key, value and id
       String sChgKey = jReq.getString("key");
-      // String sChgValue = jReq.getString("value");
       String sChgValue = unescapeHexCoding(jReq.getString("value"));
       int iChgId = jReq.getInt("id");
       // Get the CRP NAME
-      if (!jReq.has("crp"))return DataObject.errorObject("syntax", 
-          "The /crpchg request must contain: crp (name of the crp).");
       String sCrpName = jReq.getString("crp");
+      
       // Load the correct crp container
       CorpusResearchProject crpChg = crpManager.getCrp(sCrpName, sCurrentUserId);
       // Validate result
       if (crpChg == null)
-        return DataObject.errorObject("availability", 
-                "The /crpchg request looks for a CRP that is not there");
+        return DataObject.errorObject("availability", "The /crpchg request looks for a CRP that is not there");
       // Process the 'value' change in the 'key' within [crpChg]
       boolean bChanged = crpChg.doChange(sChgKey, sChgValue, iChgId);
       if (bChanged) {
