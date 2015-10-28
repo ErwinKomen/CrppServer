@@ -14,11 +14,13 @@ package nl.ru.crpx.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
+import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import static nl.ru.util.StringUtil.unescapeHexCoding;
+import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
 
@@ -50,7 +52,7 @@ public class RequestHandlerCrpChg extends RequestHandler {
   
   @Override
   public DataObject handle() {
-    
+    boolean bIsList = false;
     try {
       debug(logger, "REQ crpchg");
       // We are expecting a 'multipart' request consisting of two parts:
@@ -63,6 +65,8 @@ public class RequestHandlerCrpChg extends RequestHandler {
       //      "key":    "Goal",
       //      "id":     -1,
       //      "value":  "This CRP serves as an example" }
+      // Or: { "userid": "erkomen", "crp": "ParticleA.crpx", 
+      //       "list": [{"key": "Goal", "id": -1, "value": ""}, {...}] }
       sReqArgument = getReqString(request);
       logger.debug("Considering request /crpchg: [" + sReqArgument + "]");
       // Convert request object into JSON
@@ -70,44 +74,80 @@ public class RequestHandlerCrpChg extends RequestHandler {
             
       // Validate the parameters
       if (!jReq.has("userid")) return DataObject.errorObject("syntax", "The /crpchg request must contain: userid.");
-      if (!jReq.has("key")) return DataObject.errorObject("syntax", "The /crpchg request must contain: key.");
-      if (!jReq.has("value")) return DataObject.errorObject("syntax", "The /crpchg request must contain: value.");
-      if (!jReq.has("id")) return DataObject.errorObject("syntax", "The /crpchg request must contain: id.");
       if (!jReq.has("crp"))return DataObject.errorObject("syntax", "The /crpchg request must contain: crp (name of the crp).");
+      // Check for 'key' or 'list'
+      if (!jReq.has("key") && jReq.has("list"))
+        bIsList = true;
+      else {
+        if (!jReq.has("key")) return DataObject.errorObject("syntax", "The /crpchg request must contain: key.");
+        if (!jReq.has("value")) return DataObject.errorObject("syntax", "The /crpchg request must contain: value.");
+        if (!jReq.has("id")) return DataObject.errorObject("syntax", "The /crpchg request must contain: id.");
+      }
       
       // Retrieve and process the parameters 
       sCurrentUserId = jReq.getString("userid");
-      // Get the key, value and id
-      String sChgKey = jReq.getString("key");
-      String sChgValue = unescapeHexCoding(jReq.getString("value"));
-      int iChgId = jReq.getInt("id");
       // Get the CRP NAME
       String sCrpName = jReq.getString("crp");
-      
+
       // Load the correct crp container
       CorpusResearchProject crpChg = crpManager.getCrp(sCrpName, sCurrentUserId);
       // Validate result
       if (crpChg == null)
         return DataObject.errorObject("availability", "The /crpchg request looks for a CRP that is not there");
-      // Process the 'value' change in the 'key' within [crpChg]
-      boolean bChanged = crpChg.doChange(sChgKey, sChgValue, iChgId);
-      if (bChanged) {
-        // Save the changes
-        crpChg.Save();
+      // Initialise changed
+      boolean bChanged = false;
+      DataObjectList dlList = new DataObjectList("list");
+
+      // List or item?
+      if (bIsList) {
+        // Get the key, value and id
+        String sChgKey = jReq.getString("key");
+        String sChgValue = unescapeHexCoding(jReq.getString("value"));
+        int iChgId = jReq.getInt("id");
+        // Process the 'value' change in the 'key' within [crpChg]
+        bChanged = crpChg.doChange(sChgKey, sChgValue, iChgId);
+        if (bChanged) {
+          // Save the changes
+          crpChg.Save();
+        }
+      } else {
+        // Get the list
+        JSONArray arChanges = jReq.getJSONArray("list");
+        // Walk all changes
+        for (int i=0;i<arChanges.length();i++) {
+          JSONObject oItem = arChanges.getJSONObject(i);
+          // Get the key, value and id
+          String sChgKey = oItem.getString("key");
+          String sChgValue = unescapeHexCoding(oItem.getString("value"));
+          int iChgId = oItem.getInt("id");
+          // Process the 'value' change in the 'key' within [crpChg]
+          if (crpChg.doChange(sChgKey, sChgValue, iChgId)) bChanged = true;
+          // Add a dataobject item
+          DataObjectMapElement oMap = new DataObjectMapElement();
+          oMap.put("key", sChgKey);
+          oMap.put("id", iChgId);
+          oMap.put("value", sChgValue);
+          dlList.add(oMap);
+        }
       }
+      
       
       // Content part
       DataObjectMapElement objContent = new DataObjectMapElement();
-      objContent.put("key", sChgKey);
-      objContent.put("value", sChgValue);
-      objContent.put("id", iChgId);
       objContent.put("crp", sCrpName);
       objContent.put("changed", bChanged);
+      if (bIsList) {
+        objContent.put("list", dlList);
+      } else {
+        objContent.put("key", jReq.getString("key"));
+        objContent.put("value", jReq.getString("value"));
+        objContent.put("id", jReq.getInt("id"));
+      }
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
       objStatus.put("code", "completed");
       objStatus.put("message", "The value of the CRP's key has been changed at the server");
-      objStatus.put("userid", userId);
+      objStatus.put("userid", sCurrentUserId);
       // Prepare the total response: indexName + status object
       DataObjectMapElement response = new DataObjectMapElement();
       response.put("indexName", indexName);
