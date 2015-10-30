@@ -9,7 +9,7 @@ import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.util.FileUtil;
 import nl.ru.util.IoUtil;
-import static nl.ru.util.StringUtil.unescapeHexCoding;
+import static nl.ru.util.StringUtil.decompressSafe;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
 
@@ -79,7 +79,7 @@ public class RequestHandlerCrpSet extends RequestHandler {
       // Get the CRP text
       if (!jReq.has("crp"))return DataObject.errorObject("syntax", 
           "The /crpset request must contain: crp.");
-      sCrpText = unescapeHexCoding(jReq.getString("crp"));
+      sCrpText = decompressSafe(jReq.getString("crp"));
       // ======= Debugging ============
       // logger.debug("The crp contains:");
       // logger.debug(sCrpText);

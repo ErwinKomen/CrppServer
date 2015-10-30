@@ -19,7 +19,7 @@ import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
-import static nl.ru.util.StringUtil.unescapeHexCoding;
+import static nl.ru.util.StringUtil.decompressSafe;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
@@ -100,26 +100,20 @@ public class RequestHandlerCrpChg extends RequestHandler {
 
       // List or item?
       if (bIsList) {
-        // Get the key, value and id
-        String sChgKey = jReq.getString("key");
-        String sChgValue = unescapeHexCoding(jReq.getString("value"));
-        int iChgId = jReq.getInt("id");
-        // Process the 'value' change in the 'key' within [crpChg]
-        bChanged = crpChg.doChange(sChgKey, sChgValue, iChgId);
-        if (bChanged) {
-          // Save the changes
-          crpChg.Save();
-        }
-      } else {
-        // Get the list
-        JSONArray arChanges = jReq.getJSONArray("list");
+        // Get the list: it is escape-coded
+        String sList = decompressSafe(jReq.getString("list"));
+        // JSONArray arChanges = jReq.getJSONArray("list");
+        errHandle.debug("List unescaped = [" + sList + "]");
+        JSONArray arChanges = new JSONArray(sList);
         // Walk all changes
         for (int i=0;i<arChanges.length();i++) {
           JSONObject oItem = arChanges.getJSONObject(i);
           // Get the key, value and id
           String sChgKey = oItem.getString("key");
-          String sChgValue = unescapeHexCoding(oItem.getString("value"));
+          // String sChgValue = decompressSafe(oItem.getString("value"));
+          String sChgValue = oItem.getString("value");
           int iChgId = oItem.getInt("id");
+          errHandle.debug("List item "+i+": ["+sChgKey+"] ["+iChgId+"] ["+sChgValue+"]" );
           // Process the 'value' change in the 'key' within [crpChg]
           if (crpChg.doChange(sChgKey, sChgValue, iChgId)) bChanged = true;
           // Add a dataobject item
@@ -129,6 +123,18 @@ public class RequestHandlerCrpChg extends RequestHandler {
           oMap.put("value", sChgValue);
           dlList.add(oMap);
         }
+      } else {
+        // Get the key, value and id
+        String sChgKey = jReq.getString("key");
+        String sChgValue = decompressSafe(jReq.getString("value"));
+        int iChgId = jReq.getInt("id");
+        // Process the 'value' change in the 'key' within [crpChg]
+        bChanged = crpChg.doChange(sChgKey, sChgValue, iChgId);
+      }
+      // Save any changes!
+      if (bChanged) {
+        // Save the changes
+        crpChg.Save();
       }
       
       

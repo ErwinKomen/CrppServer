@@ -1,3 +1,15 @@
+/**
+ * Copyright (c) 2015 CLARIN-NL.
+ * All rights reserved.
+ *
+ * This software has been developed at the "Meertens Instituut"
+ *   for the CLARIN project "CorpusStudio-WebApplication".
+ * The application is based on the "CorpusStudio" program written by Erwin R. Komen
+ *   while working for the Radboud University Nijmegen.
+ * The program and the source can be freely used and re-distributed.
+ * 
+ * @author Erwin R. Komen
+ */
 package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
@@ -20,14 +32,6 @@ import nl.ru.crpx.tools.General;
 import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
-
-/*
- * This software has been developed at the "Meertens Instituut"
- *   for the CLARIN project "CorpusStudio-WebApplication".
- * The application is based on the "CorpusStudio" program written by Erwin R. Komen
- *   while working for the Radboud University Nijmegen.
- * The program and the source can be freely used and re-distributed.
- */
 
 /**
  * Base class for the web-service request-handlers that handle the different
@@ -95,11 +99,6 @@ public abstract class RequestHandler {
       
       // Initially indicate that no project has been loaded yet
       this.prjThis = null;
-      /* 
-      // Set up a Request Argument JSON string, mimicking server processing
-      sReqArgument = "{ \"userid\": \"" + userId + "\", " + 
-              "\"query\": \"" + strProject + "\"}";
-      */
     } catch (Exception ex) {
       errHandle.DoError("Could not create [RequestHandler]", ex, RequestHandler.class);
     }
@@ -338,7 +337,7 @@ public abstract class RequestHandler {
     try {
       // Get the query string
       String sQueryIdArg = request.getQueryString();
-      errHandle.debug("getReqObject #1: ["+ sQueryIdArg + "]");
+      // errHandle.debug("getReqObject #1: ["+ sQueryIdArg + "]");
       if (sQueryIdArg == null || sQueryIdArg.isEmpty()) {
         // Perhaps this is a POST request? Try to get POST parameter
         sQueryIdArg = request.getParameter("args");    
@@ -350,11 +349,16 @@ public abstract class RequestHandler {
         return oBack;
       }
       // ============= Debugging ==================
-      errHandle.debug("getReqObject #2: ["+ sMethod + "] string = [" + sQueryIdArg + "]");
+      // errHandle.debug("getReqObject #2: ["+ sMethod + "] string = [" + sQueryIdArg + "]");
+      // Perhaps this already is a JSONObject??
+      
       // Check for parameters
-      errHandle.debug("There are parameters: " + request.getParameterMap().size() );
+      // errHandle.debug("There are parameters: " + request.getParameterMap().size() );
       for (String sName : request.getParameterMap().keySet()) {
         String sValue = request.getParameter(sName);
+        // =========== Debugging =======
+        // errHandle.debug("key = [" + sName + "] value = [" + sValue + "]");
+        // =============================
         // Check for empty value
         if (sValue.isEmpty()) {
           sValue = sName;
@@ -365,6 +369,8 @@ public abstract class RequestHandler {
             errHandle.debug("Parameter [" + sName + "]=[" + sValue.substring(0, 100) + "...]");  
           else
             errHandle.debug("Parameter [" + sName + "]=[" + sValue + "]");  
+        } else {
+          errHandle.debug("empty value...");
         }
         oBack.put(sName, sValue);
       }
