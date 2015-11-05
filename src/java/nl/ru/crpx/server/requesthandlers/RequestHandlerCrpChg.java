@@ -161,7 +161,7 @@ public class RequestHandlerCrpChg extends RequestHandler {
       response.put("status", objStatus);
       return response;
     } catch (Exception ex) {
-      errHandle.DoError("Uploading a CRP failed", ex, RequestHandlerCrpChg.class);
+      errHandle.DoError("Processing CrpChg failed", ex, RequestHandlerCrpChg.class);
       return null;
     }
   }
