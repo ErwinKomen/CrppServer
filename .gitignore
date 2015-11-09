@@ -4,6 +4,5 @@
 /build.xml
 *.jsp
 *.json
-*.gitignore
 /src/conf/
 /lib/
