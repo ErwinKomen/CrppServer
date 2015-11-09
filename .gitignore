@@ -1,4 +1,9 @@
 /nbproject/
 /build/
 /dist/
-build.xml
+/build.xml
+*.jsp
+*.json
+*.gitignore
+/src/conf/
+/lib/
