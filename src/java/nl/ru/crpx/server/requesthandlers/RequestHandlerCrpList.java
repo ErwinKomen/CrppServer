@@ -5,7 +5,6 @@ import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
-import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
 

@@ -501,6 +501,7 @@ public class CrpManager {
   public DataObject getCrpList(String sUserId, String sFilter, String sFileName) {
     String sUserPath;     // Where the users are stored
     List<String> lUsers;  // List of crpx
+    int iCrpId = 0;       // Identifier of CRP on the list
     
     try {
       // Create a list to reply
@@ -541,6 +542,8 @@ public class CrpManager {
               if (bInclude) {
                 // Okay, create a reply object
                 DataObjectMapElement oData = new DataObjectMapElement();
+                iCrpId++;
+                oData.put("CrpId", iCrpId);
                 oData.put("userid", sUser);
                 oData.put("crp", sCrp);
                 oData.put("loaded", bLoaded);
