@@ -73,15 +73,15 @@ public class RequestHandlerCrpChg extends RequestHandler {
       JSONObject jReq = new JSONObject(sReqArgument);
             
       // Validate the parameters
-      if (!jReq.has("userid")) return DataObject.errorObject("syntax", "The /crpchg request must contain: userid.");
-      if (!jReq.has("crp"))return DataObject.errorObject("syntax", "The /crpchg request must contain: crp (name of the crp).");
+      if (!jReq.has("userid"))  return DataObject.errorObject("syntax", "The /crpchg request must contain: userid.");
+      if (!jReq.has("crp"))     return DataObject.errorObject("syntax", "The /crpchg request must contain: crp (name of the crp).");
       // Check for 'key' or 'list'
       if (!jReq.has("key") && jReq.has("list"))
         bIsList = true;
       else {
-        if (!jReq.has("key")) return DataObject.errorObject("syntax", "The /crpchg request must contain: key.");
+        if (!jReq.has("key"))   return DataObject.errorObject("syntax", "The /crpchg request must contain: key.");
         if (!jReq.has("value")) return DataObject.errorObject("syntax", "The /crpchg request must contain: value.");
-        if (!jReq.has("id")) return DataObject.errorObject("syntax", "The /crpchg request must contain: id.");
+        if (!jReq.has("id"))    return DataObject.errorObject("syntax", "The /crpchg request must contain: id.");
       }
       
       // Retrieve and process the parameters 
