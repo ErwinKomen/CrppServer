@@ -91,9 +91,6 @@ public class RequestHandlerCrpChg extends RequestHandler {
 
       // Load the correct crp container
       CorpusResearchProject crpChg = crpManager.getCrp(sCrpName, sCurrentUserId);
-      // Validate result
-      if (crpChg == null)
-        return DataObject.errorObject("availability", "The /crpchg request looks for a CRP that is not there");
       // Initialise changed
       boolean bChanged = false;
       DataObjectList dlList = new DataObjectList("list");
@@ -114,8 +111,18 @@ public class RequestHandlerCrpChg extends RequestHandler {
           String sChgValue = oItem.getString("value");
           int iChgId = oItem.getInt("id");
           errHandle.debug("List item "+i+": ["+sChgKey+"] ["+iChgId+"] ["+sChgValue+"]" );
-          // Process the 'value' change in the 'key' within [crpChg]
-          if (crpChg.doChange(sChgKey, sChgValue, iChgId)) bChanged = true;
+          // Special case: creation of CRP
+          if (sChgKey.equals("create")) {
+            // Create the CRP for this user
+            crpChg = crpManager.createCrp(sCrpName, sCurrentUserId);
+            // crpChg = crpManager.getCrp(sCrpName, sCurrentUserId);
+          } else {
+            // If there is no known CRP at this point, there is an error
+            if (crpChg == null)
+              return DataObject.errorObject("availability", "The /crpchg request looks for a CRP that is not there");
+            // Process the 'value' change in the 'key' within [crpChg]
+            if (crpChg.doChange(sChgKey, sChgValue, iChgId)) bChanged = true;
+          }
           // Add a dataobject item
           DataObjectMapElement oMap = new DataObjectMapElement();
           oMap.put("key", sChgKey);
@@ -128,8 +135,18 @@ public class RequestHandlerCrpChg extends RequestHandler {
         String sChgKey = jReq.getString("key");
         String sChgValue = decompressSafe(jReq.getString("value"));
         int iChgId = jReq.getInt("id");
-        // Process the 'value' change in the 'key' within [crpChg]
-        bChanged = crpChg.doChange(sChgKey, sChgValue, iChgId);
+        // Special case: creation of CRP
+        if (sChgKey.equals("create")) {
+          // If there is no known CRP at this point, there is an error
+          if (crpChg == null)
+            return DataObject.errorObject("availability", "The /crpchg request looks for a CRP that is not there");
+          // Create the CRP for this user
+          crpChg = crpManager.createCrp(sCrpName, sCurrentUserId);
+          // crpChg = crpManager.getCrp(sCrpName, sCurrentUserId);
+        } else {
+          // Process the 'value' change in the 'key' within [crpChg]
+          bChanged = crpChg.doChange(sChgKey, sChgValue, iChgId);
+        }
       }
       // Save any changes!
       if (bChanged) {

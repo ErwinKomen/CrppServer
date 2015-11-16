@@ -139,6 +139,28 @@ public class CrpManager {
   }
   
   /**
+   * createCrp
+   *    Create a CRP with the indicated name for the indicated user
+   * 
+   * @param sProjectName
+   * @param sUserId
+   * @return 
+   */
+  public CorpusResearchProject createCrp(String sProjectName, String sUserId) {
+    try {
+      CrpUser oCrpUser= getCrpUser(sProjectName, /* sLngIndex, */ sUserId);
+      // Check what we get back
+      if (oCrpUser == null)
+        return null;
+      else
+        return oCrpUser.prjThis;
+    } catch (Exception ex) {
+      errHandle.DoError("Could not load or retrieve CRP", ex, CrpManager.class);
+      return null;
+    }
+  }
+  
+  /**
    * getUserSettings
    *    Read the user's "settings.json", if it is available
    * 
