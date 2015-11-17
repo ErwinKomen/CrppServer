@@ -75,9 +75,10 @@ public class CrpManager {
    * 
    * @param sProjectName
    * @param sUserId
+   * @param sAction       - Either 'load' or 'create' 
    * @return 
    */
-  public CrpUser getCrpUser(String sProjectName, String sUserId) {
+  public CrpUser getCrpUser(String sProjectName, String sUserId, String sAction) {
     try {
       // Check if this combination already exists in the list
       for (CrpUser oCrpUser : loc_crpUserList) {
@@ -88,7 +89,7 @@ public class CrpManager {
         } 
       } 
       // Getting here means that we need to create a new entry
-      CrpUser oNewCrpUser = new CrpUser(servlet, sProjectName, sUserId, errHandle);
+      CrpUser oNewCrpUser = new CrpUser(servlet, sProjectName, sAction, sUserId, errHandle);
       // Have we succeeded?
       if (errHandle.bInterrupt || errHandle.hasErr()) {
         // There have been errors
@@ -126,7 +127,7 @@ public class CrpManager {
   }
   public CorpusResearchProject getCrp(String sProjectName, String sUserId) {
     try {
-      CrpUser oCrpUser= getCrpUser(sProjectName, /* sLngIndex, */ sUserId);
+      CrpUser oCrpUser= getCrpUser(sProjectName, sUserId, "load");
       // Check what we get back
       if (oCrpUser == null)
         return null;
@@ -148,7 +149,7 @@ public class CrpManager {
    */
   public CorpusResearchProject createCrp(String sProjectName, String sUserId) {
     try {
-      CrpUser oCrpUser= getCrpUser(sProjectName, /* sLngIndex, */ sUserId);
+      CrpUser oCrpUser= getCrpUser(sProjectName, sUserId, "create");
       // Check what we get back
       if (oCrpUser == null)
         return null;

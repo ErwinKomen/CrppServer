@@ -31,7 +31,7 @@ public class CrpUser {
   ErrHandle errHandle;            // The error handler we are using
   SearchManager searchMan;        // Local pointer to the general search manager
   // ================ Initialisation of a new class element ===================
-  public CrpUser(CrpPserver servlet, String sProjectName, /* String sLngIndex,  */
+  public CrpUser(CrpPserver servlet, String sProjectName, String sAction,
           String sUserId, ErrHandle errHandle) {
     // Set our error handler
     this.errHandle = errHandle;
@@ -44,9 +44,8 @@ public class CrpUser {
       this.userId = sUserId;
       // this.lngIndex = sLngIndex;
       // Load the project
-      if (!initCrp(sProjectName /* , sLngIndex */)) {
-        // errHandle.DoError("CrpUser: Could not load project [" + sProjectName + "] for language [" + sLngIndex + "]");
-        errHandle.DoError("CrpUser: Could not load project [" + sProjectName + "]");
+      if (!initCrp(sProjectName, sAction)) {
+        errHandle.DoError("CrpUser: Could not "+sAction+" project [" + sProjectName + "]");
         return;
       }
       // Set the project type manager for the CRP
@@ -64,7 +63,7 @@ public class CrpUser {
    History:
    7/nov/2014   ERK Created
    --------------------------------------------------------------------------- */
-  public final boolean initCrp(String strProject /*, String sLngIndex */) {
+  public final boolean initCrp(String strProject, String sAction) {
     String sInputDir;   // Input directory for this project
     String sOutputDir;  // Output directory for this project
     String sQueryDir;   // Query directory for this project
@@ -81,15 +80,29 @@ public class CrpUser {
       sInputDir = sCorpusBase;
       // Set the project path straight
       String sProjectPath = getCrpPath(strProject);
-      // Load the project
-      if (!crpThis.Load(sProjectPath, sInputDir, sOutputDir, sQueryDir)) {
-        errHandle.DoError("Could not load project " + strProject);
-        // Try to show the list of errors, if there is one
-        String sMsg = crpThis.errHandle.getErrList().toString();
-        errHandle.DoError("List of errors:\n" + sMsg);
-        return false;
+      // Init action: create or not?
+      switch (sAction) {
+        case "create":
+          // Create the project
+          if (!crpThis.Create(sProjectPath, sInputDir, sOutputDir, sQueryDir)) {
+            errHandle.DoError("Could not create project " + strProject);
+            // Try to show the list of errors, if there is one
+            String sMsg = crpThis.errHandle.getErrList().toString();
+            errHandle.DoError("List of errors:\n" + sMsg);
+            return false;
+          }
+          break;
+        case "load":
+          // Load the project
+          if (!crpThis.Load(sProjectPath, sInputDir, sOutputDir, sQueryDir)) {
+            errHandle.DoError("Could not load project " + strProject);
+            // Try to show the list of errors, if there is one
+            String sMsg = crpThis.errHandle.getErrList().toString();
+            errHandle.DoError("List of errors:\n" + sMsg);
+            return false;
+          }
+          break;
       }
-
 
       // Get my copy of the project
       this.prjThis = crpThis;
