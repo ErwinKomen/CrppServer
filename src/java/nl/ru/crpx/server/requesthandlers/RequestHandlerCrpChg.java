@@ -115,7 +115,6 @@ public class RequestHandlerCrpChg extends RequestHandler {
           if (sChgKey.equals("create")) {
             // Create the CRP for this user
             crpChg = crpManager.createCrp(sCrpName, sCurrentUserId);
-            // crpChg = crpManager.getCrp(sCrpName, sCurrentUserId);
           } else {
             // If there is no known CRP at this point, there is an error
             if (crpChg == null)

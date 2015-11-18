@@ -70,6 +70,37 @@ public class CrpManager {
   }
   
   /**
+   * existsCrp
+   *    True if the CRP with the indicated project name exists for that user
+   * 
+   * @param sProjectName
+   * @param sUserId
+   * @return 
+   */
+  public boolean existsCrp(String sProjectName, String sUserId) {
+    try {
+      String sProjectPath = sProjectName;
+      
+      // Set the project path straight
+      if (!sProjectPath.contains("/")) {
+        String sProjStart = (sProjectBase.endsWith("/")) ? sProjectBase :
+                sProjectBase + "/";
+        sProjectPath = FileUtil.nameNormalize(sProjStart + sUserId + "/" + sProjectPath);
+        if (!sProjectPath.contains(".")) {
+          sProjectPath += ".crpx";
+        }
+      }
+      // Create a file handle to it
+      File fPrj = new File(sProjectPath);
+      // Return the existence of this file
+      return fPrj.exists();
+    } catch (Exception ex) {
+      errHandle.DoError("Problem in existsCrp", ex, CrpManager.class);
+      return false;
+    }
+  }
+  
+  /**
    * getCrpUser
    * Either create a new CrpUser object, or get an already existing one
    * 
@@ -127,6 +158,9 @@ public class CrpManager {
   }
   public CorpusResearchProject getCrp(String sProjectName, String sUserId) {
     try {
+      // Validate existence
+      if (!this.existsCrp(sProjectName, sUserId)) return null;
+      // File must exist, so continue
       CrpUser oCrpUser= getCrpUser(sProjectName, sUserId, "load");
       // Check what we get back
       if (oCrpUser == null)

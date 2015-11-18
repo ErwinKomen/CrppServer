@@ -7,6 +7,7 @@
  */
 package nl.ru.crpx.server.crp;
 
+import java.io.File;
 import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.server.CrpPserver;
@@ -72,8 +73,9 @@ public class CrpUser {
       // Create room for a corpus research project
       CorpusResearchProject crpThis = new CorpusResearchProject(true);
       // Set output and query directory, depending on the user
-      sOutputDir = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/out");
-      sQueryDir = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/xq");
+      String sProjStart = (sProjectBase.endsWith("/")) ? sProjectBase : sProjectBase + "/";
+      sOutputDir = FileUtil.nameNormalize(sProjStart + this.userId + "/out");
+      sQueryDir = FileUtil.nameNormalize(sProjStart + this.userId + "/xq");
       // OLD: sInputDir = this.indexDir.getAbsolutePath();
       // Initialize the input directory to the general CorpusBase
       // Note: this value will get modified for a /exe call
@@ -93,6 +95,9 @@ public class CrpUser {
           }
           break;
         case "load":
+          // Check existence
+          File fPrj = new File(sProjectPath);
+          if (!fPrj.exists()) return false;
           // Load the project
           if (!crpThis.Load(sProjectPath, sInputDir, sOutputDir, sQueryDir)) {
             errHandle.DoError("Could not load project " + strProject);
@@ -128,7 +133,9 @@ public class CrpUser {
       
       // Set the project path straight
       if (!sProjectPath.contains("/")) {
-        sProjectPath = FileUtil.nameNormalize(sProjectBase + "/" + this.userId + "/" + sProjectPath);
+        String sProjStart = (sProjectBase.endsWith("/")) ? sProjectBase :
+                sProjectBase + "/";
+        sProjectPath = FileUtil.nameNormalize(sProjStart + this.userId + "/" + sProjectPath);
         if (!sProjectPath.contains(".")) {
           sProjectPath += ".crpx";
         }
