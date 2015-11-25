@@ -217,6 +217,9 @@ public abstract class RequestHandler {
         case "crpget":    // Send CRP from /crpp to requester
           requestHandler = new RequestHandlerCrpGet(servlet, request, indexName);
           break;
+        case "crpinfo":    // Send CRP from /crpp to requester
+          requestHandler = new RequestHandlerCrpInfo(servlet, request, indexName);
+          break;
         case "crplist": // List available CRPs for one or all user(s)
           requestHandler = new RequestHandlerCrpList(servlet, request, indexName);
           break;

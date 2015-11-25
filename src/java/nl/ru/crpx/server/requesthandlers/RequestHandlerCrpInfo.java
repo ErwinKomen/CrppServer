@@ -76,6 +76,8 @@ public class RequestHandlerCrpInfo extends RequestHandler {
         case "modified":
           // Get the indicated CRP
           CorpusResearchProject crpInfo = crpManager.getCrp(sCrpName, sCurrentUserId);
+          // Validate
+          if (crpInfo == null) return DataObject.errorObject("fatal", "The CRP is not known for this user: "+sCrpName+".");
           // Get a handle to the file
           File fCrp = new File(crpInfo.getLocation());
           // Get the modified date
