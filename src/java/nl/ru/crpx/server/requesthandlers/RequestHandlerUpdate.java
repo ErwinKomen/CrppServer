@@ -148,7 +148,7 @@ public class RequestHandlerUpdate extends RequestHandler {
         return DataObject.errorObject("availability", 
               "The CRP with the indicated name has not yet been run. Use /exe to run it first.");
       // Load the table
-      JSONArray arTable = new JSONArray(FileUtil.readFile(fTableLoc));
+      JSONArray arTable = new JSONArray((new FileUtil()).readFile(fTableLoc));
       
       // Get a JSON Array that specifies the position where we can find the data
       JSONArray arHitLocInfo = getHitFileInfo(crpThis, arTable, iQC, sSub, arFiles, iUpdStart, iUpdCount);
@@ -373,7 +373,7 @@ public class RequestHandlerUpdate extends RequestHandler {
             File fThis = new File(sHitFile);
             if (!fThis.exists()) return null;
             // Read the file into a JSON array
-            JSONObject oHitF = new JSONObject(FileUtil.readFile(fThis));
+            JSONObject oHitF = new JSONObject((new FileUtil()).readFile(fThis));
             JSONArray arHitF = oHitF.getJSONArray("hits");
             // Get to the results part of this QC combined with possible subcat
             if (sSub.isEmpty()) {

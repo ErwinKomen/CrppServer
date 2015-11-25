@@ -42,7 +42,7 @@ public class RequestHandlerServerInfo extends RequestHandler {
     // Get the corpus information stored in a file
     String sCorpora = "";
     File fCrpInfo = new File ("/etc/corpora/crp-info.json");
-    if (fCrpInfo.exists()) sCorpora = FileUtil.readFile(fCrpInfo);
+    if (fCrpInfo.exists()) sCorpora = (new FileUtil()).readFile(fCrpInfo);
     
     // Combine all of it
     DataObjectMapElement objContent = new DataObjectMapElement();

@@ -82,7 +82,7 @@ public class RequestHandlerCrpGet extends RequestHandler {
 
       // Load and prepare the content
       DataObjectMapElement objContent = new DataObjectMapElement();
-      objContent.put("crp", FileUtil.readFile(fCrpPath));
+      objContent.put("crp", (new FileUtil()).readFile(fCrpPath));
       
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();

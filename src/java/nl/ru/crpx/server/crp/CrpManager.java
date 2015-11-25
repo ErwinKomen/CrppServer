@@ -220,7 +220,7 @@ public class CrpManager {
       // Double check existence
       if (fSettings.exists()) {
         // Read the contents
-        oSettings = new JSONObject(FileUtil.readFile(fSettings));
+        oSettings = new JSONObject((new FileUtil()).readFile(fSettings));
         // Return what we found
         return oSettings;
       } else {
@@ -250,7 +250,7 @@ public class CrpManager {
       // Check existence
       if (fSettings.exists()) {
         // Read the settings as JSON object
-        JSONObject oJsonSet = new JSONObject(FileUtil.readFile(fSettings));
+        JSONObject oJsonSet = new JSONObject((new FileUtil()).readFile(fSettings));
         // Copy known key/value pairs
         Iterator keys = oJsonSet.keys();
         while (keys.hasNext()) {
