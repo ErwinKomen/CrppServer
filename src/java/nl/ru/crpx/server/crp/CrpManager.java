@@ -604,6 +604,7 @@ public class CrpManager {
                 oData.put("userid", sUser);
                 oData.put("crp", sCrp);
                 oData.put("loaded", bLoaded);
+                oData.put("size", pathCrp.toFile().length() );
                 String sCrpPath = pathCrp.toString();
                 oData.put("file", sCrpPath);
                 // Get any lng/dir info
@@ -623,22 +624,6 @@ public class CrpManager {
       } catch(IOException ex) {
         errHandle.DoError("Could not get a list of CRP-User objects", ex, CrpManager.class);
       }
-      /*
-      // Sor the arraylist
-      Comparator c = new Comparator() {
-
-        @Override
-        public int compare(Object t, Object t1) {
-          DataObjectMapElement o1 = (DataObjectMapElement) t;
-          DataObjectMapElement o2 = (DataObjectMapElement) t1;
-          return o1.get("crp").toString().compareTo(o2.get("crp").toString());
-        }
-      };
-      // Sort it
-      Collections.sort(lSorted, c);
-      // Convert ArrayList to DataObjectList
-      arList.addAll(lSorted);
-      */
       // Sort the result
       arList.sort("crp");
       // Return the array

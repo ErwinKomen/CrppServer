@@ -46,6 +46,8 @@ public class RequestHandlerCrpInfo extends RequestHandler {
   
   @Override
   public DataObject handle() {
+    CorpusResearchProject crpInfo;
+    
     try {
       debug(logger, "REQ CrpInfo");
       // Get the JSON string argument we need to process, e.g:
@@ -75,7 +77,7 @@ public class RequestHandlerCrpInfo extends RequestHandler {
       switch(sInfo) {
         case "modified":
           // Get the indicated CRP
-          CorpusResearchProject crpInfo = crpManager.getCrp(sCrpName, sCurrentUserId);
+          crpInfo = crpManager.getCrp(sCrpName, sCurrentUserId);
           // Validate
           if (crpInfo == null) return DataObject.errorObject("fatal", "The CRP is not known for this user: "+sCrpName+".");
           // Get a handle to the file
@@ -83,6 +85,14 @@ public class RequestHandlerCrpInfo extends RequestHandler {
           // Get the modified date
           String sModified = DateUtil.dateToString(fCrp.lastModified());
           objContent.put("modified", sModified);
+          break;
+        case "dateChanged":
+          // Get the indicated CRP
+          crpInfo = crpManager.getCrp(sCrpName, sCurrentUserId);
+          // Validate
+          if (crpInfo == null) return DataObject.errorObject("fatal", "The CRP is not known for this user: "+sCrpName+".");
+          // Get the value of the "Changed" setting within the CRP
+          objContent.put("dateChanged", DateUtil.dateToString(crpInfo.getDateChanged()));
           break;
         default:
           // Unknown request
