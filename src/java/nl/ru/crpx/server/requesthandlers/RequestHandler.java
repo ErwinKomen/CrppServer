@@ -238,6 +238,9 @@ public abstract class RequestHandler {
         case "load":    // Laden van een CRP voor een gebruiker
           requestHandler = new RequestHandlerLoad(servlet, request, indexName);
           break;
+        case "reset":   // Stoppen van XqJob en alle onderliggende XqF jobs
+          requestHandler = new RequestHandlerReset(servlet, request, indexName);
+          break;
         case "save":    // Opslaan van een CRP voor een gebruiker
           requestHandler = new RequestHandlerSave(servlet, request, indexName);
           break;
