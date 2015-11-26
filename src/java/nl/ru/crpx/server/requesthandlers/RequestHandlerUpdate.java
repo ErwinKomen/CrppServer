@@ -30,6 +30,7 @@ import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
 import nl.ru.xmltools.XmlAccess;
+import nl.ru.xmltools.XmlAccessFolia;
 import nl.ru.xmltools.XmlAccessPsdx;
 import nl.ru.xmltools.XmlDocument;
 import nl.ru.xmltools.XmlIndexTgReader;
@@ -193,10 +194,13 @@ public class RequestHandlerUpdate extends RequestHandler {
           // Create an Xml accesser for this particular type
           switch (crpThis.intProjType) {
             case ProjPsdx:
-             objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart);
-            case ProjAlp:
-            case ProjNegra:
+             objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart); break;
             case ProjFolia:
+             objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFilePart); break;              
+            case ProjAlp:
+              break;
+            case ProjNegra:
+              break;
             default:
               break;
           }
