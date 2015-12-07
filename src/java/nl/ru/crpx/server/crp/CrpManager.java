@@ -27,6 +27,7 @@ import nl.ru.crpx.server.CrpPserver;
 import static nl.ru.crpx.server.crp.CrpUser.sProjectBase;
 import nl.ru.crpx.tools.ErrHandle;
 import nl.ru.util.ByRef;
+import nl.ru.util.DateUtil;
 import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
@@ -115,6 +116,8 @@ public class CrpManager {
       for (CrpUser oCrpUser : loc_crpUserList) {
         // Check if this has the correct project name, language index and user id
         if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)) {
+            errHandle.debug("getCrpUser - reusing: [" + sProjectName + 
+                    ", " + sUserId + "]", CrpManager.class);
             // Return this object
             return oCrpUser;
           }
@@ -129,8 +132,9 @@ public class CrpManager {
       }
       // Add this to the list
       loc_crpUserList.add(oNewCrpUser);
-      errHandle.debug("adding CrpUser in getCrpUser: [" + sProjectName + 
-              ", " + /* sLngIndex + ", " + */ sUserId + "]", CrpManager.class);
+      String sChanged = DateUtil.dateToString(oNewCrpUser.prjThis.getDateChanged());
+      errHandle.debug("getCrpUser - adding: [" + sProjectName + 
+              ", " + sUserId + ", " + sChanged + "]", CrpManager.class);
       // Return this newly created one
       return oNewCrpUser;
     } catch (Exception ex) {
@@ -837,9 +841,17 @@ public class CrpManager {
         if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)
                 /* && oCrpUser.lngIndex.equals(sLngIndex) */) {
           // We found it: now remove it
-          errHandle.debug("removing CrpUser: [" + sProjectName + 
-              ", " + /* sLngIndex + ", " + */  sUserId + "]", CrpManager.class);
+          int iCount = loc_crpUserList.size();
           loc_crpUserList.remove(oCrpUser);
+          int iAfter = loc_crpUserList.size();
+          // Give a report to the user
+          errHandle.debug("removing CrpUser: [" + sProjectName + 
+              ", " + sUserId + "] (before="+iCount+", after="+iAfter+")", CrpManager.class);
+          // Show the contents
+          for (int i=0;i<loc_crpUserList.size();i++) {
+            CrpUser oThis = loc_crpUserList.get(i);
+            errHandle.debug("    "+(i+1)+"="+oThis.prjName+"/"+oThis.userId);
+          }
           // Return positively
           return true;
         } 
