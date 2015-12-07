@@ -115,10 +115,10 @@ public class CrpManager {
       for (CrpUser oCrpUser : loc_crpUserList) {
         // Check if this has the correct project name, language index and user id
         if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)) {
-          // Return this object
-          return oCrpUser;
+            // Return this object
+            return oCrpUser;
+          }
         } 
-      } 
       // Getting here means that we need to create a new entry
       CrpUser oNewCrpUser = new CrpUser(servlet, sProjectName, sAction, sUserId, errHandle);
       // Have we succeeded?

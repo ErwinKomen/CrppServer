@@ -151,6 +151,8 @@ public class RequestHandlerCrpChg extends RequestHandler {
       if (bChanged) {
         // Save the changes
         crpChg.Save();
+        // Remove the combination CRP/user from the crp manager, so that the fresh CRP will be loaded next time
+        crpManager.removeCrpUser(sCrpName, sCurrentUserId);
       }
       
       
