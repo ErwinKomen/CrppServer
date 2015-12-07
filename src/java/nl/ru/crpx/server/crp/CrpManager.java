@@ -112,6 +112,8 @@ public class CrpManager {
    */
   public CrpUser getCrpUser(String sProjectName, String sUserId, String sAction) {
     try {
+      // Make sure anything is set without the .crpx extension
+      if (sProjectName.endsWith(".crpx")) sProjectName = sProjectName.replace(".crpx", "");
       // Check if this combination already exists in the list
       for (CrpUser oCrpUser : loc_crpUserList) {
         // Check if this has the correct project name, language index and user id
@@ -838,8 +840,7 @@ public class CrpManager {
       // Check if this combination already exists in the list
       for (CrpUser oCrpUser : loc_crpUserList) {
         // Check if this has the correct project name, language index and user id
-        if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)
-                /* && oCrpUser.lngIndex.equals(sLngIndex) */) {
+        if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)) {
           // We found it: now remove it
           int iCount = loc_crpUserList.size();
           loc_crpUserList.remove(oCrpUser);
@@ -847,11 +848,12 @@ public class CrpManager {
           // Give a report to the user
           errHandle.debug("removing CrpUser: [" + sProjectName + 
               ", " + sUserId + "] (before="+iCount+", after="+iAfter+")", CrpManager.class);
+          /*
           // Show the contents
           for (int i=0;i<loc_crpUserList.size();i++) {
             CrpUser oThis = loc_crpUserList.get(i);
-            errHandle.debug("    "+(i+1)+"="+oThis.prjName+"/"+oThis.userId);
-          }
+            errHandle.debug("  AFTER  "+(i+1)+"="+oThis.prjName+"/"+oThis.userId);
+          }*/
           // Return positively
           return true;
         } 
