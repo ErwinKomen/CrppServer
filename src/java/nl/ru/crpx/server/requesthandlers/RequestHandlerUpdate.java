@@ -249,6 +249,8 @@ public class RequestHandlerUpdate extends RequestHandler {
               break;
           }
         }
+        // Make sure XML access is closed properly
+        if (objXmlAcc != null) objXmlAcc.close();
 
         // Add the acquired JSONObject with info about this line
         arHitDetails.add(oHitDetails);

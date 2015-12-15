@@ -766,6 +766,8 @@ public class CrpManager {
         pdxThis.LoadXml(sHeader);
         ndxBack =pdxThis.SelectSingleNode(loc_path_General);
       }
+      // Properly close the RaReader
+      fDbRa.close();
       // Return the result
       return ndxBack;
     } catch (Exception ex) {
