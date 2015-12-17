@@ -82,7 +82,7 @@ public class RequestHandlerStatusXq  extends RequestHandler {
           objContent.put("searchDone", search.finished());
           objContent.put("query", search.getJobQuery());        // The 'query' contains the original request parameters
           objContent.put("taskid", search.getJobTaskId());
-          objContent.put("table", search.getJobTable());
+          objContent.put("table", search.getJobTable());        // PROBLEM: this table can become very large...
           // Take over SOME values from the JobProgress
           JSONObject oProg = search.getJobProgress();
           objContent.put("total", oProg.getInt("total"));       // Total number of files processed
