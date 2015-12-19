@@ -848,7 +848,7 @@ public class CrpManager {
           loc_crpUserList.remove(oCrpUser);
           int iAfter = loc_crpUserList.size();
           // Give a report to the user
-          errHandle.debug("removing CrpUser: [" + sProjectName + 
+          errHandle.debug("removing CrpUser[1]: [" + sProjectName + 
               ", " + sUserId + "] (before="+iCount+", after="+iAfter+")", CrpManager.class);
           /*
           // Show the contents
@@ -883,7 +883,7 @@ public class CrpManager {
         // Check if this has the correct project name, language index and user id
         if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)) {
           // We found it: now remove it
-          errHandle.debug("removing CrpUser: [" + sProjectName + 
+          errHandle.debug("removeDbUser/removing CrpUser[db]: [" + sProjectName + 
               ", " + /* sLngIndex + ", " + */  sUserId + "]", CrpManager.class);
           loc_crpUserList.remove(oCrpUser);
           // Return positively

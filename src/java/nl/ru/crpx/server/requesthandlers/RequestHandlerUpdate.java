@@ -19,6 +19,8 @@ import javax.servlet.http.HttpServletRequest;
 import net.sf.saxon.s9api.DocumentBuilder;
 import net.sf.saxon.s9api.Processor;
 import net.sf.saxon.s9api.QName;
+import net.sf.saxon.s9api.XQueryCompiler;
+import net.sf.saxon.s9api.XQueryEvaluator;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
@@ -26,9 +28,13 @@ import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.project.CorpusResearchProject.ProjType;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
+import nl.ru.crpx.xq.CrpFile;
+import nl.ru.crpx.xq.Extensions;
 import nl.ru.util.FileUtil;
+import nl.ru.util.StringUtil;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
+import nl.ru.xmltools.Parse;
 import nl.ru.xmltools.XmlAccess;
 import nl.ru.xmltools.XmlAccessFolia;
 import nl.ru.xmltools.XmlAccessPsdx;
@@ -69,6 +75,7 @@ public class RequestHandlerUpdate extends RequestHandler {
   private File objCurrentFile = null;       // File we are working on now
   private String loc_xpWords = "";          // Xpath expression to get to the words
   private ProjType iPrjType;                // Type of current project (psdx/folia...)
+  private Extensions ruExt = null;          // To make sure Extension functions work
   private static final QName loc_attr_LeafText = new QName("", "", "Text");
 
   // =================== Initialisation of this class ==========================
@@ -82,8 +89,10 @@ public class RequestHandlerUpdate extends RequestHandler {
   public DataObject handle() {
     String sSub = "";         // Sub category to be returned
     String sLngPart = "";     // Part of the corpus to be accessed
+    String sGrpCode = "";     // Xquery code for a possible group calculation per file
     JSONArray arFiles = null; // List of file names separated by tabs
     XmlAccess objXmlAcc;      // XML access to the file(chunk) we are working with
+    Parse objParseXq = null;  // Object to parse Xquery
     
     try {
       debug(logger, "REQ update");
@@ -123,6 +132,12 @@ public class RequestHandlerUpdate extends RequestHandler {
       if (jReq.has("sub")) sSub = jReq.getString("sub");
       if (jReq.has("dir")) sLngPart = jReq.getString("dir");
       if (jReq.has("files")) arFiles = jReq.getJSONArray("files");
+      if (jReq.has("div")) {
+        // Get the 'division' (=grouping) string, which is coded
+        String sDiv = jReq.getString("div");
+        // Decompress it
+        sGrpCode = StringUtil.decompressSafe(sDiv);
+      }
       
       // Get access to the indicated CRP
       CorpusResearchProject crpThis = crpManager.getCrp(sCrpName, sCurrentUserId);
@@ -151,108 +166,169 @@ public class RequestHandlerUpdate extends RequestHandler {
       // Load the table
       JSONArray arTable = new JSONArray((new FileUtil()).readFile(fTableLoc));
       
-      // Get a JSON Array that specifies the position where we can find the data
-      JSONArray arHitLocInfo = getHitFileInfo(crpThis, arTable, iQC, sSub, arFiles, iUpdStart, iUpdCount);
-      // Validate what we receive back
-      if (arHitLocInfo == null) {
-        // Return an appropriate error message
-        return DataObject.errorObject("bad request", 
-              "The requested information could not be found (getHitFileInfo). Internal errors:" + 
-                      errHandle.getErrList().toString());
-      }
-
-      // Get the directory where corpus files must be found
-      String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
-      
+      // General initialisations
+      objXmlAcc = null;      
       // Start an array with the required results
-      // JSONArray arHitDetails = new JSONArray();
       DataObjectList arHitDetails = new DataObjectList("content");
-      String sLastFile = ""; String sOneSrcFilePart = "";
-      objXmlAcc = null;
-      // Start gathering the results
-      for (int i=0;i<iUpdCount && i < arHitLocInfo.length(); i++) {
-        // Calculate the number we are looking for
-        int iHitNumber = iUpdStart + i;
-        // Start storing the details of this hit
-        DataObjectMapElement oHitDetails = new DataObjectMapElement();
-        //JSONObject oHitDetails = new JSONObject();
-        oHitDetails.put("n", iHitNumber);
-        // Get the entry from hitlocinfo
-        JSONObject oHitLocInfo = arHitLocInfo.getJSONObject(i);
-        String sOneSrcFile = oHitLocInfo.getString("file");
-        String sLocs = oHitLocInfo.getString("locs");
-        String sLocw = oHitLocInfo.getString("locw");
-        oHitDetails.put("file", sOneSrcFile);
-        oHitDetails.put("locs", sLocs);
-        oHitDetails.put("locw", sLocw);
-        if (oHitLocInfo.has("msg")) oHitDetails.put("msg", oHitLocInfo.getString("msg"));
-        // Do we have this file already?
-        if (sLastFile.isEmpty() || !sLastFile.equals(sOneSrcFile)) {
-          // Construct the target file name
-          sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sOneSrcFile);
-          sLastFile = sOneSrcFile;
-          // Create an Xml accesser for this particular type
-          switch (crpThis.intProjType) {
-            case ProjPsdx:
-             objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart); break;
-            case ProjFolia:
-             objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFilePart); break;              
-            case ProjAlp:
-              break;
-            case ProjNegra:
-              break;
-            default:
-              break;
-          }
-        }
-        // Validate
-        if (objXmlAcc == null)
-          return DataObject.errorObject("incompatibility", 
-              "The interface to the XML files of type ["+crpThis.getProjectType()+"] is not yet implemented");
-        // Get access to the XML sentence belonging to this @locs
-        // objXmlAc = getOneSentence(crpThis, pdxThis, sOneSrcFilePart, sLocs);
-        
-        // Convert [sUpdType] into an array
-        String[] arUpdType = {sUpdType};
-        if (sUpdType.contains("\\+"))
-          arUpdType = sUpdType.split("[+]");
-        else if (sUpdType.contains(" "))
-          arUpdType = sUpdType.split(" ");
-        else if (sUpdType.contains("\\|"))
-          arUpdType = sUpdType.split("[|]");
-        else if (sUpdType.contains("_"))
-          arUpdType = sUpdType.split("_");
-        
-        // Get the information needed for /update
-        JSONObject oHitInfo = null;
-        for (int k=0;k<arUpdType.length;k++) {
-          switch(arUpdType[k].trim()) {
-            case "hits":    // Per hit: file // forestId // ru:back() text
-              oHitInfo = objXmlAcc.getHitLine(sLngName, sLocs, sLocw);
-              oHitDetails.put("preH", oHitInfo.getString("pre"));
-              oHitDetails.put("hitH", oHitInfo.getString("hit"));
-              oHitDetails.put("folH", oHitInfo.getString("fol"));
-              break;
-            case "context": // Per hit the contexts: pre // clause // post
-              oHitInfo = objXmlAcc.getHitContext(sLngName, sLocs, sLocw, 
-                      crpThis.getPrecNum(), crpThis.getFollNum());
-              oHitDetails.put("preC", oHitInfo.getString("pre"));
-              oHitDetails.put("hitC", oHitInfo.getString("hit"));
-              oHitDetails.put("folC", oHitInfo.getString("fol"));
-              break;
-            case "syntax":  // Per hit: file // forestId // node syntax (psd-kind)
-              DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLngName, sLocs, sLocw);
-              oHitDetails.put("allS", oHitSyntax.get("all"));
-              oHitDetails.put("hitS", oHitSyntax.get("hit"));
-              break;
-            default:
-              break;
-          }
-        }
+      
+      // If the 'type' is 'grouping', then we need to return:
+      //   - a list of group names
+      //   - each group name has a list of files containing results from that group
+      //   - each group name has the total amount of hits for that group
+      // Future:
+      //   - each group name has the total amount of words/sentences for the files in that group
+      switch (sUpdType) {
+        case "grouping":
+          // Make sure the code is there
+          if (sGrpCode.isEmpty())
+            return DataObject.errorObject("error", 
+                  "A request is made to show a grouping, but no Xquery code is supplied.");
+          // Initialisations
+          objParseXq = new Parse(crpThis, errHandle);
+          if (ruExt == null) ruExt = new Extensions(crpThis);
+          // Get a compiler
+          XQueryCompiler objCompiler = objSaxon.newXQueryCompiler();
+          // Add ru: namespace declaration
+          sGrpCode = Parse.getDeclNmsp("ru") + "\n"+ sGrpCode;
+          // Create and compile an Xquery evaluator
+          XQueryEvaluator qMetaGroups = objParseXq.getEvaluator(objCompiler, sGrpCode);
 
-        // Add the acquired JSONObject with info about this line
-        arHitDetails.add(oHitDetails);
+          // Get to the QC we are interested in
+          for (int i=0;i<arTable.length();i++) {
+            JSONObject oQC = arTable.getJSONObject(i);
+            // Universal for all types: only give ONE QC
+            if (oQC.getInt("qc") == iQC) {
+              // We have found the right QC
+              // (1) Get the result label
+              String sResLabel = oQC.getString("result");
+              // (2) Get the names of the sub-categories
+              JSONArray arSubCat = oQC.getJSONArray("subcats");
+              // (3) Get the total number of hits per sub-category
+              JSONArray arSubCount = oQC.getJSONArray("counts");
+              // (4) Walk through the hits for the QC
+              JSONArray arHits = oQC.getJSONArray("hits");
+              for (int j=0;j<arHits.length();j++) {
+                // Check out this QC/File combination
+                JSONObject oHit = arHits.getJSONObject(j);
+                // Get the file name
+                String sFile = oHit.getString("file");
+                // Determine the group name this file belongs to according to the current grouping
+                String sGroup = objParseXq.getGroupName(qMetaGroups, crpThis, sFile);
+                // TODO: Continue here
+                
+                // Get the number of hits for this file
+                int iCount = oHit.getInt("count");
+              }
+              
+              // We have processed the correct QC, so now leave the for-loop
+              break;
+            }
+          }
+          // Walk all the files in the table
+          // TODO: process 
+          break;
+        default:
+          // Get a JSON Array that specifies the position where we can find the data
+          JSONArray arHitLocInfo = getHitFileInfo(crpThis, arTable, iQC, sSub, arFiles, iUpdStart, iUpdCount);
+          // Validate what we receive back
+          if (arHitLocInfo == null) {
+            // Return an appropriate error message
+            return DataObject.errorObject("bad request", 
+                  "The requested information could not be found (getHitFileInfo). Internal errors:" + 
+                          errHandle.getErrList().toString());
+          }
+
+          // Get the directory where corpus files must be found
+          String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
+
+          String sLastFile = ""; String sOneSrcFilePart = "";
+          // Start gathering the results
+          for (int i=0;i<iUpdCount && i < arHitLocInfo.length(); i++) {
+            // Calculate the number we are looking for
+            int iHitNumber = iUpdStart + i;
+            // Start storing the details of this hit
+            DataObjectMapElement oHitDetails = new DataObjectMapElement();
+            //JSONObject oHitDetails = new JSONObject();
+            oHitDetails.put("n", iHitNumber);
+            // Get the entry from hitlocinfo
+            JSONObject oHitLocInfo = arHitLocInfo.getJSONObject(i);
+            String sOneSrcFile = oHitLocInfo.getString("file");
+            String sLocs = oHitLocInfo.getString("locs");
+            String sLocw = oHitLocInfo.getString("locw");
+            oHitDetails.put("file", sOneSrcFile);
+            oHitDetails.put("locs", sLocs);
+            oHitDetails.put("locw", sLocw);
+            if (oHitLocInfo.has("msg")) oHitDetails.put("msg", oHitLocInfo.getString("msg"));
+            // Do we have this file already?
+            if (sLastFile.isEmpty() || !sLastFile.equals(sOneSrcFile)) {
+              // Construct the target file name
+              sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sOneSrcFile);
+              sLastFile = sOneSrcFile;
+              // Create an Xml accesser for this particular type
+              switch (crpThis.intProjType) {
+                case ProjPsdx:
+                 objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart); break;
+                case ProjFolia:
+                 objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFilePart); break;              
+                case ProjAlp:
+                  break;
+                case ProjNegra:
+                  break;
+                default:
+                  break;
+              }
+            }
+            // Validate
+            if (objXmlAcc == null)
+              return DataObject.errorObject("incompatibility", 
+                  "The interface to the XML files of type ["+crpThis.getProjectType()+"] is not yet implemented");
+            // Get access to the XML sentence belonging to this @locs
+            // objXmlAc = getOneSentence(crpThis, pdxThis, sOneSrcFilePart, sLocs);
+
+            // Convert [sUpdType] into an array
+            String[] arUpdType = {sUpdType};
+            if (sUpdType.contains("\\+"))
+              arUpdType = sUpdType.split("[+]");
+            else if (sUpdType.contains(" "))
+              arUpdType = sUpdType.split(" ");
+            else if (sUpdType.contains("\\|"))
+              arUpdType = sUpdType.split("[|]");
+            else if (sUpdType.contains("_"))
+              arUpdType = sUpdType.split("_");
+
+            // Get the information needed for /update
+            JSONObject oHitInfo = null;
+            for (int k=0;k<arUpdType.length;k++) {
+              switch(arUpdType[k].trim()) {
+                case "hits":    // Per hit: file // forestId // ru:back() text
+                  oHitInfo = objXmlAcc.getHitLine(sLngName, sLocs, sLocw);
+                  oHitDetails.put("preH", oHitInfo.getString("pre"));
+                  oHitDetails.put("hitH", oHitInfo.getString("hit"));
+                  oHitDetails.put("folH", oHitInfo.getString("fol"));
+                  break;
+                case "context": // Per hit the contexts: pre // clause // post
+                  oHitInfo = objXmlAcc.getHitContext(sLngName, sLocs, sLocw, 
+                          crpThis.getPrecNum(), crpThis.getFollNum());
+                  oHitDetails.put("preC", oHitInfo.getString("pre"));
+                  oHitDetails.put("hitC", oHitInfo.getString("hit"));
+                  oHitDetails.put("folC", oHitInfo.getString("fol"));
+                  break;
+                case "syntax":  // Per hit: file // forestId // node syntax (psd-kind)
+                  DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLngName, sLocs, sLocw);
+                  oHitDetails.put("allS", oHitSyntax.get("all"));
+                  oHitDetails.put("hitS", oHitSyntax.get("hit"));
+                  break;
+                default:
+                  break;
+              }
+            }
+
+            // Add the acquired JSONObject with info about this line
+            arHitDetails.add(oHitDetails);
+          }
+          break;
       }
+      
       // Make sure XML access is closed properly when it is not needed anymore
       if (objXmlAcc != null) objXmlAcc.close();
       
