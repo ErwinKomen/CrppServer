@@ -21,9 +21,11 @@ import net.sf.saxon.s9api.Processor;
 import net.sf.saxon.s9api.QName;
 import net.sf.saxon.s9api.XQueryCompiler;
 import net.sf.saxon.s9api.XQueryEvaluator;
+import nl.ru.crpx.dataobject.DataFormat;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
+import nl.ru.crpx.dataobject.DataObjectString;
 import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.project.CorpusResearchProject.ProjType;
 import nl.ru.crpx.server.CrpPserver;
@@ -192,6 +194,13 @@ public class RequestHandlerUpdate extends RequestHandler {
           sGrpCode = Parse.getDeclNmsp("ru") + "\n"+ sGrpCode;
           // Create and compile an Xquery evaluator
           XQueryEvaluator qMetaGroups = objParseXq.getEvaluator(objCompiler, sGrpCode);
+          
+          // Start creating a JSON array where we put the countings per group
+          JSONArray arGroupCount = new JSONArray();
+          JSONArray arGroupName = new JSONArray();
+          
+          // Array to combine the results we are interested in
+          JSONArray arCombi = new JSONArray();
 
           // Get to the QC we are interested in
           for (int i=0;i<arTable.length();i++) {
@@ -214,16 +223,26 @@ public class RequestHandlerUpdate extends RequestHandler {
                 String sFile = oHit.getString("file");
                 // Determine the group name this file belongs to according to the current grouping
                 String sGroup = objParseXq.getGroupName(qMetaGroups, crpThis, sFile);
-                // TODO: Continue here
-                
                 // Get the number of hits for this file
                 int iCount = oHit.getInt("count");
+                // Add the number of hits for this group
+                if (!addSubGroupCount(arCombi, iCount, sFile, "", sGroup ))
+                  return DataObject.errorObject("error", 
+                    "Problem adding counts per group/subcat");
+                // Now walk the sub-categories
+                JSONArray arSubs = oHit.getJSONArray("subs");
+                for (int k=0;k<arSubs.length();k++) {
+                  addSubGroupCount(arCombi, arSubs.getInt(k), sFile, arSubCat.getString(k), sGroup );
+                }
               }
               
               // We have processed the correct QC, so now leave the for-loop
               break;
             }
           }
+          // Tranform the JSON array arCombi into dataobject arHitDetails
+          arHitDetails = transformSubGroupCount(arCombi);
+          
           // Walk all the files in the table
           // TODO: process 
           break;
@@ -346,6 +365,111 @@ public class RequestHandlerUpdate extends RequestHandler {
     } catch (Exception ex) {
       errHandle.DoError("Providing /update information failed", ex, RequestHandlerUpdate.class);
       return null;
+    }
+  }
+  
+  /**
+   * addSubGroupCount
+   *    Find or create the correct entry in arCount:
+   *      JSONObject there has the same @sSub and @sGroup
+   *    Add two bits of information there:
+   *    1) Counter is increased with @iAdd
+   *    2) the name @sFile is added to the JSONArray with files
+   * 
+   * @param arCount
+   * @param iAdd
+   * @param sFile
+   * @param sSub
+   * @param sGroup 
+   */
+  private boolean addSubGroupCount(JSONArray arCount, int iAdd, String sFile, String sSub, String sGroup) {
+    try {
+      // FInd the entry
+      for (int i=0;i<arCount.length();i++) {
+        // Get object here
+        JSONObject oThis = arCount.getJSONObject(i);
+        // Only add files if they have non-zero counts
+        if (iAdd > 0) {
+          // Get the group and sub
+          String sThisGroup =  oThis.getString("group");
+          String sThisSub   = oThis.getString("sub");
+          // Check if this is the correct one
+          if (!sSub.isEmpty() && !sThisSub.isEmpty() &&
+              sThisSub.equals(sSub) && sThisGroup.equals(sGroup)) {
+            // Add the information here
+            JSONArray arFiles = oThis.getJSONArray("files");
+            arFiles.put(sFile);
+            oThis.put("files", arFiles);
+
+            int iCount = oThis.getInt("count");
+            iCount += iAdd;
+            oThis.put("count", iCount);
+            // Put object back into array
+            arCount.put(i, oThis);
+            // Return positively
+            return true;
+          }
+        }
+      }
+      // Entry was not found: create it
+      JSONObject oThis = new JSONObject();
+      oThis.put("group", sGroup);
+      oThis.put("sub", sSub);
+      JSONArray arFile = new JSONArray();
+      // Only actually add this file if Add is non-zero
+      if (iAdd > 0) arFile.put(sFile);
+      oThis.put("files", arFile);
+      oThis.put("count", iAdd);
+      // Add it to the array
+      arCount.put(oThis);
+      
+      // Return positively
+      return true;
+    } catch (Exception ex) {
+      errHandle.DoError("update/addSubGroupCount failed", ex, RequestHandlerUpdate.class);
+      return false;
+    }
+  }
+  
+  /**
+   * transformSubGroupCount
+   *    Transform JSONarray into DataObject List with group info
+   * 
+   * @param arCombi
+   * @return 
+   */
+  private DataObjectList transformSubGroupCount(JSONArray arCombi) {
+    DataObjectList arBack = new DataObjectList("counts");
+    
+    try {
+      // Walk all input rows
+      for (int i=0;i<arCombi.length(); i++) {
+        // Access this row
+        JSONObject oThis = arCombi.getJSONObject(i);
+        // Get he count
+        int iCount = oThis.getInt("count");
+        // Create a dataobjectmapelement for this row
+        DataObjectMapElement elThis = new DataObjectMapElement();
+        // Transfer easy elements
+        elThis.put("group", oThis.getString("group"));
+        elThis.put("sub", oThis.getString("sub"));
+        elThis.put("count", iCount);
+        // Get the array of file naem
+        JSONArray arFiles = oThis.getJSONArray("files");
+        DataObjectList arNew = new DataObjectList("files");
+        for (int j = 0 ; j< arFiles.length(); j++) {
+          arNew.add(arFiles.getString(j));
+        }
+        // Put the array of file names in the destination
+        elThis.put("files", arNew);
+        // Add element to the array we return
+        arBack.add(elThis);
+      }
+      // Return what has been made
+      return arBack;
+    } catch (Exception ex) {
+      errHandle.DoError("update/transformSubGroupCount failed", ex, RequestHandlerUpdate.class);
+      return arBack;
     }
   }
   
