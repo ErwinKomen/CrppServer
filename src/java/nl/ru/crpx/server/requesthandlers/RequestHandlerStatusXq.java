@@ -64,17 +64,8 @@ public class RequestHandlerStatusXq  extends RequestHandler {
         sCode = sJobStatus;
         // Check if the status is error
         if (sJobStatus.equals("error")) {
-          // Set the error message
-          if (errHandle.hasErr())
-            sResult = errHandle.getErrList().toString() + "\n";
-          // Get the list of XQ errors
-          List<JSONObject> arErr = search.getJobErrors();
-          if (arErr != null && arErr.size() > 0)
-            for (int i=0;i<arErr.size();i++)
-              sResult += arErr.get(i).toString() + "\n";
-          String sJobRes = search.getJobResult();
-          // Errors might also be in JobResult...
-          if (!sJobRes.isEmpty()) sResult += sJobRes + "\n";
+          // Get the error message
+          sResult = this.errorCollect(search);
         } else {
           sResult = "The search has finished";
           objContent.put("searchParam", searchParam.toDataObject());

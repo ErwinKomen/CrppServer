@@ -240,7 +240,10 @@ public class RequestHandlerExecute extends RequestHandler {
       if (search.getJobStatus().equals("error")) {
         // Prepare a status object to return
         objStatus.put("code", "error");
-        objStatus.put("message", errHandle.getErrList().toString());
+        // Collect all error messages together
+        String sMsg = this.errorCollect(search);
+        // Pass on the error message
+        objStatus.put("message", sMsg);
         search.getJobPtc();
         search.getJobProgress();
       } else {

@@ -19,11 +19,13 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
+import nl.ru.crpx.search.Job;
 import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.search.SearchParameters;
 import nl.ru.crpx.server.CrpPserver;
@@ -470,6 +472,35 @@ public abstract class RequestHandler {
   
   public void debug(Logger logger, String msg) {
     logger.debug(shortUserId() + " " + msg);
+  }
+  
+  /**
+   * errorCollect -- combine the errors for a particular job into one message string
+   * 
+   * @param search
+   * @return 
+   */
+  public String errorCollect(Job search) {
+    String sResult = "";    // Collection of errors
+    
+    try {
+      // Set the error message
+      if (errHandle.hasErr())
+        sResult = errHandle.getErrList().toString() + "\n";
+      // Get the list of XQ errors
+      List<JSONObject> arErr = search.getJobErrors();
+      if (arErr != null && arErr.size() > 0)
+        for (int i=0;i<arErr.size();i++)
+          sResult += arErr.get(i).toString() + "\n";
+      String sJobRes = search.getJobResult();
+      // Errors might also be in JobResult...
+      if (!sJobRes.isEmpty()) sResult += sJobRes + "\n";
+      // Return the combined errors
+      return sResult;
+    } catch (Exception ex) {
+      errHandle.DoError("Problem in errorCollect()", ex, RequestHandler.class);
+      return sResult;
+    }
   }
 
 
