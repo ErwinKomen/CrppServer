@@ -34,7 +34,7 @@ public class RequestHandlerShow extends RequestHandler {
     // Prepare a status object to return
     DataObjectMapElement objStatus = new DataObjectMapElement();
     objStatus.put("code", "completed");
-    objStatus.put("message", "The Java-part of the R-webservice works fine.");
+    objStatus.put("message", "The Java-part of the CRPP service works fine.");
     objStatus.put("userid", userId);
     // Prepare the total response: indexName + status object
     DataObjectMapElement response = new DataObjectMapElement();

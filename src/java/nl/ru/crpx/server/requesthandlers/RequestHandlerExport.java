@@ -14,8 +14,9 @@ import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
 
 /**
- * RequestHandlerStatusXq
- * Handle status information requests for "Xq" jobs
+ * RequestHandlerExport
+ *  Return tabular information on the results?
+ *  NOTE: this handler is probably not really used by /crpstudio
  * 
  * @author Erwin R. Komen
  */
