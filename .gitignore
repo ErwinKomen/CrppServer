@@ -1,7 +1,6 @@
 /nbproject/
 /build/
 /dist/
-/build.xml
 *.xml
 *.properties
 *.jsp
