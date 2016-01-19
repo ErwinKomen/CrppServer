@@ -203,10 +203,11 @@ public class RequestHandlerUpdate extends RequestHandler {
           JSONArray arCombi = new JSONArray();
 
           // Get to the QC we are interested in
+          int iQCnumber = iQC + 1;
           for (int i=0;i<arTable.length();i++) {
             JSONObject oQC = arTable.getJSONObject(i);
             // Universal for all types: only give ONE QC
-            if (oQC.getInt("qc") == iQC) {
+            if (oQC.getInt("qc") == iQCnumber) {
               // We have found the right QC
               // (1) Get the result label
               String sResLabel = oQC.getString("result");
