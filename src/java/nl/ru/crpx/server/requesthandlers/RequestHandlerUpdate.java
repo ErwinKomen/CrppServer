@@ -14,6 +14,7 @@ package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import net.sf.saxon.s9api.DocumentBuilder;
@@ -201,6 +202,10 @@ public class RequestHandlerUpdate extends RequestHandler {
           
           // Array to combine the results we are interested in
           JSONArray arCombi = new JSONArray();
+          // List that contains the group labels
+          List<String> lstGroup = new ArrayList<>();
+          // Array of sub categories
+          List<String> lstSubCat = new ArrayList<>();
 
           // Get to the QC we are interested in
           int iQCnumber = iQC + 1;
@@ -213,6 +218,11 @@ public class RequestHandlerUpdate extends RequestHandler {
               String sResLabel = oQC.getString("result");
               // (2) Get the names of the sub-categories
               JSONArray arSubCat = oQC.getJSONArray("subcats");
+              lstSubCat.add("");
+              for (int k=0;k<arSubCat.length();k++) {
+                lstSubCat.add(arSubCat.getString(k));
+              }
+              
               // (3) Get the total number of hits per sub-category
               JSONArray arSubCount = oQC.getJSONArray("counts");
               // (4) Walk through the hits for the QC
@@ -224,6 +234,8 @@ public class RequestHandlerUpdate extends RequestHandler {
                 String sFile = oHit.getString("file");
                 // Determine the group name this file belongs to according to the current grouping
                 String sGroup = objParseXq.getGroupName(qMetaGroups, crpThis, sFile);
+                // Add the group label, if appropriate
+                if (lstGroup.indexOf(sGroup)<0) lstGroup.add(sGroup);
                 // Get the number of hits for this file
                 int iCount = oHit.getInt("count");
                 // Add the number of hits for this group
@@ -241,8 +253,11 @@ public class RequestHandlerUpdate extends RequestHandler {
               break;
             }
           }
+          // Sort the group labels
+          Collections.sort(lstGroup);
           // Tranform the JSON array arCombi into dataobject arHitDetails
-          arHitDetails = transformSubGroupCount(arCombi);
+          // Use the group labels from lstGroup
+          arHitDetails = transformSubGroupCount(arCombi, lstSubCat, lstGroup);
           
           // Walk all the files in the table
           // TODO: process 
@@ -389,27 +404,30 @@ public class RequestHandlerUpdate extends RequestHandler {
       for (int i=0;i<arCount.length();i++) {
         // Get object here
         JSONObject oThis = arCount.getJSONObject(i);
-        // Only add files if they have non-zero counts
-        if (iAdd > 0) {
-          // Get the group and sub
-          String sThisGroup =  oThis.getString("group");
-          String sThisSub   = oThis.getString("sub");
-          // Check if this is the correct one
-          if (!sSub.isEmpty() && !sThisSub.isEmpty() &&
-              sThisSub.equals(sSub) && sThisGroup.equals(sGroup)) {
-            // Add the information here
-            JSONArray arFiles = oThis.getJSONArray("files");
-            arFiles.put(sFile);
-            oThis.put("files", arFiles);
-
-            int iCount = oThis.getInt("count");
-            iCount += iAdd;
-            oThis.put("count", iCount);
-            // Put object back into array
-            arCount.put(i, oThis);
-            // Return positively
+        // Get the group and sub
+        String sThisGroup =  oThis.getString("group");
+        String sThisSub   = oThis.getString("sub");
+        // Check if this is the correct one
+//        if (!sSub.isEmpty() && !sThisSub.isEmpty() &&
+//            sThisSub.equals(sSub) && sThisGroup.equals(sGroup)) {
+        if (sThisSub.equals(sSub) && sThisGroup.equals(sGroup)) {
+          // Only add files if they have non-zero counts
+          if (iAdd == 0) {
+            // Do not add this one
             return true;
           }
+          // Add the information here
+          JSONArray arFiles = oThis.getJSONArray("files");
+          arFiles.put(sFile);
+          oThis.put("files", arFiles);
+
+          int iCount = oThis.getInt("count");
+          iCount += iAdd;
+          oThis.put("count", iCount);
+          // Put object back into array
+          arCount.put(i, oThis);
+          // Return positively
+          return true;
         }
       }
       // Entry was not found: create it
@@ -435,37 +453,80 @@ public class RequestHandlerUpdate extends RequestHandler {
   /**
    * transformSubGroupCount
    *    Transform JSONarray into DataObject List with group info
+   *    Use the group labels in [lstGroup]
    * 
    * @param arCombi
+   * @param arSubCat  - Names of sub categories
+   * @param lstGroup  - Names of groups
    * @return 
    */
-  private DataObjectList transformSubGroupCount(JSONArray arCombi) {
+  private DataObjectList transformSubGroupCount(JSONArray arCombi, 
+          List<String> lstSubCat, List<String> lstGroup) {
     DataObjectList arBack = new DataObjectList("counts");
     
     try {
-      // Walk all input rows
+      // Add the list of group names
+      DataObjectMapElement elGrp = new DataObjectMapElement();
+      DataObjectList arGrp = new DataObjectList("list");
+      for (int i=0;i<lstGroup.size();i++) {
+        arGrp.add(lstGroup.get(i));
+      }
+      elGrp.put("groups", arGrp);
+      arBack.add(elGrp);
+      // Now create a table consisting of rows (subcats) and columns (groups)
+      for (int i=0;i<lstSubCat.size();i++) {
+        // Access sub category
+        String sSubCat = lstSubCat.get(i);
+        DataObjectMapElement oRow = new DataObjectMapElement();
+        oRow.put("sub", sSubCat);
+        // Create an array for the columns
+        DataObjectList arCol = new DataObjectList("cols");
+        // Walk all possible groups for this subcat-row
+        for (int j=0;j<lstGroup.size();j++) {
+          // Create an element that *could* contain content
+          DataObjectMapElement oCol = new DataObjectMapElement();
+          oCol.put("group", lstGroup.get(j));
+          oCol.put("count", 0);
+          // Add group to the array of columns
+          arCol.add(oCol);
+        }
+        // Add array of columns to the row object
+        oRow.put("groups", arCol);
+        // Add row to output array
+        arBack.add(oRow);
+      }
+      // Walk all the *actually found* elements
       for (int i=0;i<arCombi.length(); i++) {
-        // Access this row
+        // Access this element
         JSONObject oThis = arCombi.getJSONObject(i);
-        // Get he count
-        int iCount = oThis.getInt("count");
-        // Create a dataobjectmapelement for this row
-        DataObjectMapElement elThis = new DataObjectMapElement();
-        // Transfer easy elements
-        elThis.put("group", oThis.getString("group"));
-        elThis.put("sub", oThis.getString("sub"));
-        elThis.put("count", iCount);
+        // Find group and subcat
+        String sSubCat = oThis.getString("sub");
+        String sGroup = oThis.getString("group");
+        // Where should element be put?
+        int iRow = lstSubCat.indexOf(sSubCat);
+        int iCol = lstGroup.indexOf(sGroup);
+        // Get the right row
+        DataObjectMapElement oRow = (DataObjectMapElement) arBack.get(iRow+1);
+        // Get the right element within this row
+        DataObjectList arCols = (DataObjectList) oRow.get("groups");
+        DataObjectMapElement oCol = (DataObjectMapElement) arCols.get(iCol);
+        // Add items to this element
+        oCol.put("count",  oThis.getInt("count"));
         // Get the array of file naem
         JSONArray arFiles = oThis.getJSONArray("files");
         DataObjectList arNew = new DataObjectList("files");
-        for (int j = 0 ; j< arFiles.length(); j++) {
-          arNew.add(arFiles.getString(j));
+        for (int k = 0 ; k< arFiles.length(); k++) {
+          arNew.add(arFiles.getString(k));
         }
         // Put the array of file names in the destination
-        elThis.put("files", arNew);
-        // Add element to the array we return
-        arBack.add(elThis);
+        oCol.put("files", arNew);
+        // Put the Column object back into the list
+        arCols.set(iCol, oCol);
+        // Put the array of groups back into the row object
+        oRow.put("groups", arCols);
+        arBack.set(iRow+1, oRow);
       }
+
       // Return what has been made
       return arBack;
     } catch (Exception ex) {
