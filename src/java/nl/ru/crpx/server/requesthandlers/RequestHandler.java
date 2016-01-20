@@ -106,6 +106,24 @@ public abstract class RequestHandler {
     }
   }
   
+  public static String getDbFilename(String sName, String sUserId) {
+    try {
+      String sProjectPath = sName;
+      
+      // Set the project path straight
+      if (!sProjectPath.contains("/")) {
+        sProjectPath = FileUtil.nameNormalize(sProjectBase + "/" + sUserId + "/dbase/"+ sProjectPath);
+        if (!sProjectPath.contains(".")) {
+          sProjectPath += ".xml";
+        }
+      }
+      // Return our findings
+      return sProjectPath;
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get Result Dbase file name", ex, RequestHandler.class);
+      return "";
+    }
+  }
   /**
    * Given the name of a CRP, get its full path
    * 
@@ -230,6 +248,9 @@ public abstract class RequestHandler {
           break;
         case "dblist": // List available databases for one or all user(s)
           requestHandler = new RequestHandlerDbList(servlet, request, indexName);
+          break;
+        case "dbset":   // List available databases for one or all user(s)
+          requestHandler = new RequestHandlerDbSet(servlet, request, indexName);
           break;
         case "debug":
           requestHandler = new RequestHandlerDebug(servlet, request, indexName);
