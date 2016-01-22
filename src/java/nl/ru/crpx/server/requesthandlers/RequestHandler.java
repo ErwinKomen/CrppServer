@@ -246,6 +246,9 @@ public abstract class RequestHandler {
         case "crpset":    // Requester sends a CRP to the /crpp
           requestHandler = new RequestHandlerCrpSet(servlet, request, indexName);
           break;
+        case "dbget":    // Send Database from /crpp to requester
+          requestHandler = new RequestHandlerDbGet(servlet, request, indexName);
+          break;
         case "dblist": // List available databases for one or all user(s)
           requestHandler = new RequestHandlerDbList(servlet, request, indexName);
           break;
