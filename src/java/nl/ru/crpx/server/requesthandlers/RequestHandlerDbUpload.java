@@ -72,7 +72,7 @@ public class RequestHandlerDbUpload extends RequestHandler {
       //      "name":     "ParticleA_Dbase.xml",
       //      "overwrite": true}
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /dbupload: " + sReqArgument);
+      logger.debug("Considering request /dbupload: [" + sReqArgument.substring(0,10) + "...]");
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       // Verify that required parts are here
