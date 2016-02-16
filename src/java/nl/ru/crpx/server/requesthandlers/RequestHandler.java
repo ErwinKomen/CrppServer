@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -29,6 +30,7 @@ import nl.ru.crpx.search.Job;
 import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.search.SearchParameters;
 import nl.ru.crpx.server.CrpPserver;
+import nl.ru.crpx.server.util.UserFile;
 import nl.ru.crpx.tools.ErrHandle;
 import nl.ru.crpx.tools.General;
 import nl.ru.util.FileUtil;
@@ -61,6 +63,7 @@ public abstract class RequestHandler {
   static String lastIP = "";                    /** IP address of last request */
   static String sProjectBase = "/etc/project/"; // Base directory where user-spaces are stored
   static String sCorpusBase = "/etc/corpora/";  // Base directory where corpora are stored
+  static List<UserFile> lUserFile = new ArrayList<>();
   // ================== Other instance variables ================================
   String sReqArgument = "";     // Request arguments
   String sLastReqArg = "";      // Arguments of last request
@@ -237,23 +240,26 @@ public abstract class RequestHandler {
         case "crpget":    // Send CRP from /crpp to requester
           requestHandler = new RequestHandlerCrpGet(servlet, request, indexName);
           break;
-        case "crpinfo":    // Send CRP from /crpp to requester
+        case "crpinfo":   // Send CRP from /crpp to requester
           requestHandler = new RequestHandlerCrpInfo(servlet, request, indexName);
           break;
-        case "crplist": // List available CRPs for one or all user(s)
+        case "crplist":   // List available CRPs for one or all user(s)
           requestHandler = new RequestHandlerCrpList(servlet, request, indexName);
           break;
         case "crpset":    // Requester sends a CRP to the /crpp
           requestHandler = new RequestHandlerCrpSet(servlet, request, indexName);
           break;
-        case "dbget":    // Send Database from /crpp to requester
+        case "dbget":     // Send Database from /crpp to requester
           requestHandler = new RequestHandlerDbGet(servlet, request, indexName);
           break;
-        case "dblist": // List available databases for one or all user(s)
+        case "dblist":    // List available databases for one or all user(s)
           requestHandler = new RequestHandlerDbList(servlet, request, indexName);
           break;
-        case "dbset":   // List available databases for one or all user(s)
+        case "dbset":     // Upload/set one whole database
           requestHandler = new RequestHandlerDbSet(servlet, request, indexName);
+          break;
+        case "dbupload":  // Upload one part of a database
+          requestHandler = new RequestHandlerDbUpload(servlet, request, indexName);
           break;
         case "debug":
           requestHandler = new RequestHandlerDebug(servlet, request, indexName);
@@ -527,5 +533,36 @@ public abstract class RequestHandler {
     }
   }
 
-
+  /**
+   * getUserFile  -- Retrieve or create a UserFile object
+   * 
+   * @param sUserId   -- User responsible for uploading this file
+   * @param sFilename -- Name of this file
+   * @param iTotal    -- Total number of chunks for this file
+   * @param oErr      -- ErrHandle object
+   * @return 
+   */
+  public UserFile getUserFile(String sUserId, String sFilename, int iTotal, ErrHandle oErr) {
+    UserFile oThis = null;
+    try {
+      // Walk the list
+      for (int i=0;i<lUserFile.size();i++) {
+        if (lUserFile.get(i).name.equals(sFilename)) {
+          // Found it!
+          oThis = lUserFile.get(i);
+          return oThis;
+        }
+      }
+      // Haven't found it: add it
+      oThis = new UserFile(sUserId, sFilename, iTotal, oErr);
+      synchronized(lUserFile) {
+        lUserFile.add(oThis);
+      }
+      // Return what we found
+      return oThis;
+    } catch (Exception ex) {
+      errHandle.DoError("getUserFile: could not complete", ex);
+      return null;
+    }
+  }
 }
