@@ -113,6 +113,10 @@ public class UserFile {
           }
           
         }
+        // Flush the remainder
+        writer.flush();
+        // And then close it myself
+        writer.close();
       }
       
       // Return positively

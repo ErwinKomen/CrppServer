@@ -14,6 +14,7 @@
 package nl.ru.crpx.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.Part;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
@@ -72,7 +73,6 @@ public class RequestHandlerDbUpload extends RequestHandler {
       //      "name":     "ParticleA_Dbase.xml",
       //      "overwrite": true}
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /dbupload: [" + sReqArgument.substring(0,10) + "...]");
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       // Verify that required parts are here
@@ -89,6 +89,9 @@ public class RequestHandlerDbUpload extends RequestHandler {
       int iChunk = jReq.getInt("chunk");                    // Number of this chunk
       int iTotal = jReq.getInt("total");                    // Total number of chunks expected
       
+      logger.debug("Considering request /dbupload: [userid="+sCurrentUserId+
+              ", name="+sDbName+", chunk="+iChunk+", total="+iTotal+"]");
+     
       // Optional parameters: "overwrite"
       if (jReq.has("overwrite")) bOverwrite = jReq.getBoolean("overwrite");
       // Optional parameters: "lng" and "dir"
