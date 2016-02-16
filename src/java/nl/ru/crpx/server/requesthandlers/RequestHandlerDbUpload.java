@@ -129,6 +129,8 @@ public class RequestHandlerDbUpload extends RequestHandler {
           // Return correct information
           sCode = "completed";
           sMsg = "The result dbase has been stored at the server: "+sResDbase;
+          // Clear the list
+          oUserFile.Clear();
         } else {
           // =========== DEBUG ===================
           errHandle.debug("dbupload chunk="+ iChunk+" progress="+oUserFile.chunk.size()+ "/"+oUserFile.total);

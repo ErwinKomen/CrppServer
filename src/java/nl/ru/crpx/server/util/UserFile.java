@@ -93,11 +93,25 @@ public class UserFile {
         OutputStreamWriter osThis = new OutputStreamWriter(foThis, "UTF-8"); 
         BufferedWriter writer = new BufferedWriter(osThis)) {
         // Loop through the chunks
-        for (int i=0;i<this.chunk.size();i++) {
-          // Access this chunk
-          FileChunk oThis = this.chunk.get(i);
-          // Write this chunk away
-          writer.write(oThis.text);
+        for (int i=0;i<this.total;i++) {
+          // What is the chunk number?
+          int iChunk = i+1;
+          // Get the index of the element that has this chunk number
+          int iHas = -1;
+          for (int j=0;j<this.chunk.size();j++) {
+            if (this.chunk.get(j).number == iChunk) {
+              iHas = j;
+              break;
+            }
+          }
+          // Do we have it?
+          if (iHas>=0) {
+            // Access this chunk
+            FileChunk oThis = this.chunk.get(iHas);
+            // Write this chunk away
+            writer.write(oThis.text);
+          }
+          
         }
       }
       
