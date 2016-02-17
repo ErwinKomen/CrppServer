@@ -13,6 +13,9 @@
  */
 package nl.ru.crpx.server.requesthandlers;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.Part;
 import nl.ru.crpx.dataobject.DataObject;
@@ -58,6 +61,7 @@ public class RequestHandlerDbUpload extends RequestHandler {
   
   @Override
   public DataObject handle() {
+    JSONObject jReq;
     boolean bOverwrite = true;
     String sDbText = "";
     String sLng = "";           // Optional "language" (corpus)
@@ -72,19 +76,35 @@ public class RequestHandlerDbUpload extends RequestHandler {
       //      "dbchunk":  "abkerj/kdr#kje;ar",   // coded
       //      "name":     "ParticleA_Dbase.xml",
       //      "overwrite": true}
-      sReqArgument = getReqString(request);
-      // Take apart the request object
-      JSONObject jReq = new JSONObject(sReqArgument);
+      
+      // Check if we have a multi-part upload
+      if (request.getContentType() != null && 
+              request.getContentType().toLowerCase().contains("multipart/form-data") ) {
+        debug(logger, "dbupload = multipart");
+        // Yes, we have a multi-part DbUpload request
+        Part oPart = request.getPart("fileUpload");
+        String sDbChunk = getFileText(oPart);
+        sDbText = decompressSafe(sDbChunk);  // The text of the database chunk
+        // Read the other parameters
+        jReq = new JSONObject(request.getParameter("args"));
+      } else {
+        debug(logger, "dbupload = arguments");
+        sReqArgument = getReqString(request);
+        // Take apart the request object
+        jReq = new JSONObject(sReqArgument);
+        // The chunk is part of the parameters
+        if (!jReq.has("dbchunk")) return DataObject.errorObject("syntax", "The /dbupload request must contain: dbchunk.");
+        sDbText = decompressSafe(jReq.getString("dbchunk"));  // The text of the database chunk
+      }      
+      
       // Verify that required parts are here
       if (!jReq.has("userid"))  return DataObject.errorObject("syntax", "The /dbupload request must contain: userid.");
       if (!jReq.has("chunk"))   return DataObject.errorObject("syntax", "The /dbupload request must contain: chunk.");
       if (!jReq.has("total"))   return DataObject.errorObject("syntax", "The /dbupload request must contain: total.");
-      if (!jReq.has("dbchunk")) return DataObject.errorObject("syntax", "The /dbupload request must contain: dbchunk.");
       if (!jReq.has("name"))    return DataObject.errorObject("syntax", "The /dbupload request must contain: name.");
       
       // Get the values of the required parameters
       sCurrentUserId = jReq.getString("userid");            // The user
-      sDbText = decompressSafe(jReq.getString("dbchunk"));  // The text of the database chunk
       String sDbName = jReq.getString("name");              // Name of the complete file
       int iChunk = jReq.getInt("chunk");                    // Number of this chunk
       int iTotal = jReq.getInt("total");                    // Total number of chunks expected
@@ -161,4 +181,28 @@ public class RequestHandlerDbUpload extends RequestHandler {
       return null;
     }
   }
+  
+  /**
+   * getFileText -- Convert the part to a string
+   * 
+   * @param oPart
+   * @return 
+   */
+  private String getFileText(Part oPart) {
+    try {
+      StringBuilder value = new StringBuilder();
+      try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+              oPart.getInputStream(), "UTF-8"))) {
+        char[] buffer = new char[1024];
+        for (int length = 0; (length = reader.read(buffer)) > 0;) {
+          value.append(buffer, 0, length);
+        }
+      }
+      return value.toString();
+    } catch (Exception ex) {
+      errHandle.DoError("getFileText", ex, RequestHandlerDbUpload.class);
+      return "";
+    }
+  }
+  
 }

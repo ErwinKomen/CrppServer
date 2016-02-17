@@ -110,6 +110,13 @@ public class UserFile {
             FileChunk oThis = this.chunk.get(iHas);
             // Write this chunk away
             writer.write(oThis.text);
+            // =========== DEBUG ===================
+            errHandle.debug("dbupload/Write chunk "+iChunk+" from location "+iHas);
+            // =====================================
+          } else {
+            // =========== DEBUG ===================
+            errHandle.debug("dbupload/Write cannot find chunk: "+iChunk);
+            // =====================================
           }
           
         }
