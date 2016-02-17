@@ -15,16 +15,13 @@ package nl.ru.crpx.server.requesthandlers;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.io.StringWriter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.Part;
 import nl.ru.crpx.dataobject.DataObject;
-import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.crpx.server.util.UserFile;
-import nl.ru.util.FileUtil;
 import static nl.ru.util.StringUtil.decompressSafe;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
@@ -73,8 +70,9 @@ public class RequestHandlerDbUpload extends RequestHandler {
       //   {  "userid":   "erkomen",
       //      "chunk":    3,
       //      "total":    14,                     
-      //      "dbchunk":  "abkerj/kdr#kje;ar",   // coded
+      //      "dbchunk":  "abkerj/kdr#kje;ar",    // coded
       //      "name":     "ParticleA_Dbase.xml",
+      //      "start":    true,                   // This is the *FIRST* upload
       //      "overwrite": true}
       
       // Check if we have a multi-part upload
@@ -102,15 +100,17 @@ public class RequestHandlerDbUpload extends RequestHandler {
       if (!jReq.has("chunk"))   return DataObject.errorObject("syntax", "The /dbupload request must contain: chunk.");
       if (!jReq.has("total"))   return DataObject.errorObject("syntax", "The /dbupload request must contain: total.");
       if (!jReq.has("name"))    return DataObject.errorObject("syntax", "The /dbupload request must contain: name.");
+      if (!jReq.has("start"))    return DataObject.errorObject("syntax", "The /dbupload request must contain: name.");
       
       // Get the values of the required parameters
       sCurrentUserId = jReq.getString("userid");            // The user
       String sDbName = jReq.getString("name");              // Name of the complete file
       int iChunk = jReq.getInt("chunk");                    // Number of this chunk
       int iTotal = jReq.getInt("total");                    // Total number of chunks expected
+      boolean bStart = jReq.getBoolean("start");            // Whether this is the first or not
       
       logger.debug("Considering request /dbupload: [userid="+sCurrentUserId+
-              ", name="+sDbName+", chunk="+iChunk+", total="+iTotal+"]");
+              ", start="+bStart+", name="+sDbName+", chunk="+iChunk+", total="+iTotal+"]");
      
       // Optional parameters: "overwrite"
       if (jReq.has("overwrite")) bOverwrite = jReq.getBoolean("overwrite");
@@ -135,6 +135,10 @@ public class RequestHandlerDbUpload extends RequestHandler {
       if (bOverwrite || crpManager.getDbList( sCurrentUserId, sDbName) == null) {
         // We may continue: get the UserFile object
         UserFile oUserFile = this.getUserFile(sCurrentUserId, sDbName, iTotal, errHandle);
+        // If this is the *START*, then we need to clear the list of files
+        if (bStart) {
+          oUserFile.chunk.clear();
+        }
         // Add the chunk at the appropriate location
         oUserFile.AddChunk(sDbText, iChunk, iTotal);
         // Check if we have all the chunks that are expected
