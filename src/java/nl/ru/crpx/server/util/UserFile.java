@@ -13,18 +13,13 @@
  */
 package nl.ru.crpx.server.util;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
-import javax.servlet.http.Part;
 import nl.ru.crpx.tools.ErrHandle;
-import nl.ru.util.FileUtil;
 
 /**
  * UserFile -- Holds all information pertaining to a file that is
@@ -111,7 +106,7 @@ public class UserFile {
             // Write this chunk away
             writer.write(oThis.text);
             // =========== DEBUG ===================
-            errHandle.debug("dbupload/Write chunk "+iChunk+" from location "+iHas);
+            // errHandle.debug("dbupload/Write chunk "+iChunk+" from location "+iHas);
             // =====================================
           } else {
             // =========== DEBUG ===================

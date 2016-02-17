@@ -76,9 +76,8 @@ public class RequestHandlerDbUpload extends RequestHandler {
       //      "overwrite": true}
       
       // Check if we have a multi-part upload
-      if (request.getContentType() != null && 
-              request.getContentType().toLowerCase().contains("multipart/form-data") ) {
-        debug(logger, "dbupload = multipart");
+      if (this.isMultiPart(request)) {
+        // debug(logger, "dbupload = multipart");
         // Yes, we have a multi-part DbUpload request
         Part oPart = request.getPart("fileUpload");
         String sDbChunk = getFileText(oPart);
@@ -86,7 +85,7 @@ public class RequestHandlerDbUpload extends RequestHandler {
         // Read the other parameters
         jReq = new JSONObject(request.getParameter("args"));
       } else {
-        debug(logger, "dbupload = arguments");
+        // debug(logger, "dbupload = arguments");
         sReqArgument = getReqString(request);
         // Take apart the request object
         jReq = new JSONObject(sReqArgument);
@@ -112,15 +111,16 @@ public class RequestHandlerDbUpload extends RequestHandler {
       int iTotal = jReq.getInt("total");                    // Total number of chunks expected
       boolean bStart = jReq.getBoolean("start");            // Whether this is the first or not
       
-      logger.debug("Considering request /dbupload: [userid="+sCurrentUserId+
-              ", start="+bStart+", name="+sDbName+", chunk="+iChunk+", total="+iTotal+"]");
-     
       // Optional parameters: "overwrite"
       if (jReq.has("overwrite")) bOverwrite = jReq.getBoolean("overwrite");
       // Optional parameters: "lng" and "dir"
       if (jReq.has("lng")) sLng = jReq.getString("lng");
       if (jReq.has("dir")) sDir = jReq.getString("dir");
       
+      logger.debug("Considering request /dbupload: [userid="+sCurrentUserId+
+              ", start="+bStart+", overwrite="+bOverwrite+
+              ", name="+sDbName+", chunk="+iChunk+", total="+iTotal+"]");
+     
       // Check if this has the .xml ending
       if (!sDbName.endsWith(".xml")) sDbName += ".xml";
       
@@ -134,8 +134,14 @@ public class RequestHandlerDbUpload extends RequestHandler {
       String sCode = "error";
       String sMsg = "(no message)";
       
+      // Possibly check existence
+      boolean bCheckedExists = false;
+      if (!bOverwrite) {
+        bCheckedExists = (crpManager.getDbList( sCurrentUserId, sDbName) != null);
+      }
+      
       // Overwrite protection: continue if we may overwrite, or else, if the db does not exist yet
-      if (bOverwrite || crpManager.getDbList( sCurrentUserId, sDbName) == null) {
+      if (bOverwrite || !bCheckedExists) {
         // We may continue: get the UserFile object
         UserFile oUserFile = this.getUserFile(sCurrentUserId, sDbName, iTotal, errHandle);
         // If this is the *START*, then we need to clear the list of files
@@ -219,4 +225,20 @@ public class RequestHandlerDbUpload extends RequestHandler {
     }
   }
   
+  /**
+   * isMultiPart -- Check if a Http request is multi-part or not
+   * 
+   * @param request
+   * @return 
+   */
+  public boolean isMultiPart(HttpServletRequest request) {
+    try {
+      // Check if we have a multi-part upload
+      return (request.getContentType() != null && 
+              request.getContentType().toLowerCase().contains("multipart/form-data") );
+    } catch (Exception ex) {
+      errHandle.DoError("isMultiPart:", ex);
+      return false;
+    }
+  }
 }
