@@ -68,11 +68,11 @@ public class RequestHandlerDbUpload extends RequestHandler {
       debug(logger, "REQ dbupload");
       // The JSON object "query" consists of:
       //   {  "userid":   "erkomen",
-      //      "chunk":    3,
+      //      "chunk":    3,                      // value '0' means: confirm ready to receive + make room
       //      "total":    14,                     
       //      "dbchunk":  "abkerj/kdr#kje;ar",    // coded
       //      "name":     "ParticleA_Dbase.xml",
-      //      "start":    true,                   // This is the *FIRST* upload
+      //      "action":   "send",                 // Possible: {init, send, status}
       //      "overwrite": true}
       
       // Check if we have a multi-part upload
@@ -102,14 +102,14 @@ public class RequestHandlerDbUpload extends RequestHandler {
       if (!jReq.has("chunk"))   return DataObject.errorObject("syntax", "The /dbupload request must contain: chunk.");
       if (!jReq.has("total"))   return DataObject.errorObject("syntax", "The /dbupload request must contain: total.");
       if (!jReq.has("name"))    return DataObject.errorObject("syntax", "The /dbupload request must contain: name.");
-      if (!jReq.has("start"))   return DataObject.errorObject("syntax", "The /dbupload request must contain: start.");
+      if (!jReq.has("action"))  return DataObject.errorObject("syntax", "The /dbupload request must contain: action.");
       
       // Get the values of the required parameters
       sCurrentUserId = jReq.getString("userid");            // The user
       String sDbName = jReq.getString("name");              // Name of the complete file
       int iChunk = jReq.getInt("chunk");                    // Number of this chunk
       int iTotal = jReq.getInt("total");                    // Total number of chunks expected
-      boolean bStart = jReq.getBoolean("start");            // Whether this is the first or not
+      String sAction = jReq.getString("action");            // Whether this is the first or not
       
       // Optional parameters: "overwrite"
       if (jReq.has("overwrite")) bOverwrite = jReq.getBoolean("overwrite");
@@ -118,7 +118,7 @@ public class RequestHandlerDbUpload extends RequestHandler {
       if (jReq.has("dir")) sDir = jReq.getString("dir");
       
       logger.debug("Considering request /dbupload: [userid="+sCurrentUserId+
-              ", start="+bStart+", overwrite="+bOverwrite+
+              ", action="+sAction+", overwrite="+bOverwrite+
               ", name="+sDbName+", chunk="+iChunk+", total="+iTotal+"]");
      
       // Check if this has the .xml ending
@@ -145,43 +145,49 @@ public class RequestHandlerDbUpload extends RequestHandler {
         // We may continue: get the UserFile object
         UserFile oUserFile = this.getUserFile(sCurrentUserId, sDbName, iTotal, errHandle);
         // If this is the *START*, then we need to clear the list of files
-        if (bStart) {
-          // Clear the list of files
-          oUserFile.chunk.clear();
-          // Give an appropriate response
-          sCode = "initialized";
-          sMsg = "The /crpp server is ready to receive a results database";
-        } else {
-          // Add the chunk at the appropriate location
-          oUserFile.AddChunk(sDbText, iChunk, iTotal);
-          // Check if we have all the chunks that are expected
-          if (oUserFile.IsReady()) {
-            // =========== DEBUG ===================
-            errHandle.debug("dbupload - finalizing");
-            // =====================================
-            // Save the Result Dbase to an appropriate location
-            String sResDbase = RequestHandler.getDbFilename(sDbName, sCurrentUserId);
-            // We are ready, so combine the fragments
-            oUserFile.Write(sResDbase);
-            // =========== DEBUG ===================
-            errHandle.debug("dbupload written to: "+sResDbase);
-            // =====================================
-            // Return correct information
-            sCode = "completed";
-            sMsg = "The result dbase has been stored at the server: "+sResDbase;
-            // Clear the list
-            oUserFile.Clear();
-          } else {
-            // =========== DEBUG ===================
-            errHandle.debug("dbupload chunk="+ iChunk+" progress="+oUserFile.chunk.size()+ "/"+oUserFile.total);
-            // =====================================
+        switch(sAction) {
+          case "init":
+            // Clear the list of files
+            oUserFile.chunk.clear();
+            // Give an appropriate response
+            sCode = "initialized";
+            sMsg = "The /crpp server is ready to receive a results database";
+            break;
+          case "send":
+            // Add the chunk at the appropriate location (do NOT send it yet)
+            oUserFile.AddChunk(sDbText, iChunk, iTotal);
+            // Check if we have all the chunks that are expected
+            if (oUserFile.IsReady()) {
+              // =========== DEBUG ===================
+              errHandle.debug("dbupload - finalizing");
+              // =====================================
+              // Save the Result Dbase to an appropriate location
+              String sResDbase = RequestHandler.getDbFilename(sDbName, sCurrentUserId);
+              // We are ready, so combine the fragments
+              oUserFile.Write(sResDbase);
+              // =========== DEBUG ===================
+              errHandle.debug("dbupload written to: "+sResDbase);
+              // =====================================
+              // Return correct information
+              sCode = "completed";
+              sMsg = "The result dbase has been stored at the server: "+sResDbase;
+              // Clear the list
+              oUserFile.Clear();
+            } else {
+              // =========== DEBUG ===================
+              errHandle.debug("dbupload chunk="+ iChunk+" progress="+oUserFile.chunk.size()+ "/"+oUserFile.total);
+              // =====================================
 
-            // We are not ready, so return a progress message
-            sCode = "working";
-            // Return progress information
-            objContent.put("read", oUserFile.chunk.size() );
-            objContent.put("total", oUserFile.total);
-          }
+              // We are not ready, so return a progress message
+              sCode = "working";
+              // Return progress information
+              objContent.put("read", oUserFile.chunk.size() );
+              objContent.put("total", oUserFile.total);
+            }
+            break;
+          case "status":
+            // Provide information as to where we are
+            break;
         }
       } else {
         // This may hold code to give a better reaction against overwriting an existing database
