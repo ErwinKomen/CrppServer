@@ -36,7 +36,8 @@ public class UserFile {
   // ================ Public variables ===============
   public String userId;     // ID for the user of this file
   public String name;       // Name of this file
-  public int total;        // Total number of expected chunks
+  public int total;         // Total number of expected chunks
+  public boolean interrupt; // Interrupt signal
   public List<FileChunk> chunk = new ArrayList<>();
   // ================ Class initialization ============
   public UserFile(String sUser, String sName, int iTotal, ErrHandle oErr) {
@@ -44,6 +45,13 @@ public class UserFile {
     this.name = sName;
     this.errHandle = oErr;
     this.total = iTotal;
+    this.interrupt = false;
+  }
+  // ================ signal interrupt ================
+  public synchronized void Stop() { this.interrupt = true; }
+  public synchronized void Init() {
+    this.interrupt = false;
+    this.chunk.clear();
   }
   
   // ================ Public methods ==================
@@ -89,6 +97,8 @@ public class UserFile {
         BufferedWriter writer = new BufferedWriter(osThis)) {
         // Loop through the chunks
         for (int i=0;i<this.total;i++) {
+          // Check for interrupt
+          if (this.interrupt) {writer.close(); return true;}
           // What is the chunk number?
           int iChunk = i+1;
           // Get the index of the element that has this chunk number
