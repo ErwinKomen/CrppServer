@@ -58,9 +58,11 @@ public class RequestHandlerReset  extends RequestHandler {
       // Validate
       if (search == null) return DataObject.errorObject("INTERNAL_ERROR", 
               "Cannot find job #" + sStatusJobId + " for user [" + sStatusUserId + "]");
-
+      // Pass on the message that the jobs need to stop
+      search.setJobStatus("interrupt");
+      
       // Attempt to finish the job
-      search.cancelJob();
+      search.changeClientsWaiting(-1);
       
       // Indicate what we have done
       objContent.put("action", "aborted");
