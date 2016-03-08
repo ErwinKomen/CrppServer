@@ -565,7 +565,7 @@ public class RequestHandlerUpdate extends RequestHandler {
       iUpdFinish = iUpdCurrent + iUpdCount -1;
       sHitFile = "";
       // Find the QC that is needed
-      if (arTable.length()<iQC-1) return null;
+      if (arTable.length()<iQC-1) { errHandle.debug("getHitFileInfo: table="+arTable.length());return null;}
       JSONObject oQClist = arTable.getJSONObject(iQC-1);
       // Do we need to have a sub-category number?
       if (!sSub.isEmpty()) {
@@ -577,11 +577,11 @@ public class RequestHandlerUpdate extends RequestHandler {
           }
         }
         // Validate
-        if (iSubCat<0) return null;
+        if (iSubCat<0) { errHandle.debug("getHitFileInfo: sSub="+sSub);return null;}
       }
       
       // Get to the hits for this QC
-      if (!oQClist.has("hits")) return null;
+      if (!oQClist.has("hits")) { errHandle.debug("getHitFileInfo: oQClist.hits=null");return null;}
       JSONArray arQClist = oQClist.getJSONArray("hits");
       
       // If there are any files in [arFiles], then remove those that are not
@@ -639,7 +639,7 @@ public class RequestHandlerUpdate extends RequestHandler {
             sHitFile = crpThis.getHitsDir() + sLastPart;
             // Validate existence
             File fThis = new File(sHitFile);
-            if (!fThis.exists()) return null;
+            if (!fThis.exists()) { errHandle.debug("getHitFileInfo: non existing fThis="+sHitFile);return null;}
             // Read the file into a JSON array
             JSONObject oHitF = new JSONObject((new FileUtil()).readFile(fThis));
             JSONArray arHitF = oHitF.getJSONArray("hits");
