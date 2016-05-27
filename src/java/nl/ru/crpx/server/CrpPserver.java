@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Path;
 import java.util.Properties;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -86,13 +87,17 @@ public class CrpPserver extends HttpServlet  {
       // Perform initialisations related to this project-type using the config file
       // Read it from a package parent
       String configFileName = "crpp-settings.json";
-      File configFile = new File(getServletContext().getRealPath("/../../../" + configFileName));
+      // Path pContextRoot = new Path(getServletContext().getRealPath("/"));
+      // File fContextRoot = new File(getServletContext().getRealPath("/"));
+      String sContextRoot = getServletContext().getRealPath("/");
+      
+      File configFile = new File(sContextRoot+"../../../" + configFileName);
       // One check
       if (!configFile.exists()) {
-        configFile = new File(getServletContext().getRealPath("/../../" + configFileName));
+        configFile = new File(sContextRoot+"../../" + configFileName);
         // One more check
         if (!configFile.exists()) {
-          configFile = new File(getServletContext().getRealPath("/../" + configFileName));
+          configFile = new File(sContextRoot+"../" + configFileName);
         }
       }
       // Check if it is there
