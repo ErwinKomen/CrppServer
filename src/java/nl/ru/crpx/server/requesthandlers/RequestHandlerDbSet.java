@@ -1,3 +1,15 @@
+/**
+ * Copyright (c) 2015 CLARIN-NL.
+ * All rights reserved.
+ *
+ * This software has been developed at the "Meertens Instituut"
+ *   for the CLARIN project "CorpusStudio-WebApplication".
+ * The application is based on the "CorpusStudio" program written by Erwin R. Komen
+ *   while working for the Radboud University Nijmegen.
+ * The program and the source can be freely used and re-distributed.
+ * 
+ * @author Erwin R. Komen
+ */
 package nl.ru.crpx.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
@@ -10,14 +22,6 @@ import nl.ru.util.FileUtil;
 import static nl.ru.util.StringUtil.decompressSafe;
 import nl.ru.util.json.JSONObject;
 import org.apache.log4j.Logger;
-
-/*
- * This software has been developed at the "Meertens Instituut"
- *   for the CLARIN project "CorpusStudio-WebApplication".
- * The application is based on the "CorpusStudio" program written by Erwin R. Komen
- *   while working for the Radboud University Nijmegen.
- * The program and the source can be freely used and re-distributed.
- */
 
 
 /**
