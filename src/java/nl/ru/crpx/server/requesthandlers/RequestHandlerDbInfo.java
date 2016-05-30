@@ -13,36 +13,20 @@
 package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
-import net.sf.saxon.s9api.DocumentBuilder;
-import net.sf.saxon.s9api.Processor;
 import net.sf.saxon.s9api.QName;
-import net.sf.saxon.s9api.XQueryCompiler;
-import net.sf.saxon.s9api.XQueryEvaluator;
-import nl.ru.crpx.dataobject.DataFormat;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
-import nl.ru.crpx.dataobject.DataObjectString;
 import nl.ru.crpx.project.CorpusResearchProject;
-import nl.ru.crpx.project.CorpusResearchProject.ProjType;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
-import nl.ru.crpx.xq.CrpFile;
 import nl.ru.crpx.xq.Extensions;
-import nl.ru.util.FileUtil;
-import nl.ru.util.StringUtil;
-import nl.ru.util.json.JSONArray;
+import nl.ru.util.ByRef;
 import nl.ru.util.json.JSONObject;
-import nl.ru.xmltools.Parse;
-import nl.ru.xmltools.XmlAccess;
-import nl.ru.xmltools.XmlAccessFolia;
-import nl.ru.xmltools.XmlAccessPsdx;
-import nl.ru.xmltools.XmlDocument;
 import nl.ru.xmltools.XmlIndexTgReader;
+import nl.ru.xmltools.XmlNode;
 import nl.ru.xmltools.XmlResultPsdxIndex;
 import org.apache.log4j.Logger;
 
@@ -114,40 +98,30 @@ public class RequestHandlerDbInfo extends RequestHandler {
       if (!oDbIndex.Prepare(sDbFile)) return DataObject.errorObject("availability", 
               "The database with the indicated name cannot be loaded for this user");
       
+      // Start a content object
+      DataObjectMapElement objContent = new DataObjectMapElement();
+      
+      // The general information of the database must be added at any rate (no matter the value of iUpdStart)
+      objContent.put("General", getGeneralPart(oDbIndex));
+      
       // Start an array with the required results
-      DataObjectList arHitDetails = new DataObjectList("content");
+      DataObjectList arHitDetails = new DataObjectList("results");
+      int iCount = 0;     // Number of results actually given
 
       // Find out what the operation is: if start less than zero, then provide the general info
-      if (iUpdStart<0) {
-        // THe user wants to have all the information in the <General> section
-        JSONObject oHdr = oDbIndex.headerInfo();
-        // Make sure certain parts are copied
-        String sProjectName = ""; // Name of CRPX that created the DB
-        String sCreated = "";     // Created date in sortable date/time
-        String sLanguage = "";    // Main language
-        String sPart = "";        // Part of corpus
-        String sNotes = "";       // Notes to the DB
-        String sAnalysis = "";    // Names of all features used
-        if (oHdr.has("ProjectName")) sProjectName = oHdr.getString("ProjectName");
-        if (oHdr.has("Created")) sCreated = oHdr.getString("Created");
-        if (oHdr.has("Language")) sLanguage = oHdr.getString("Language");
-        if (oHdr.has("Part")) sPart = oHdr.getString("Part");
-        if (oHdr.has("Notes")) sNotes = oHdr.getString("Notes");
-        if (oHdr.has("Analysis")) sAnalysis = oHdr.getString("Analysis");
-        // Put all into a datamapelement
-        DataObjectMapElement oGeneral = new DataObjectMapElement();
-        oGeneral.put("ProjectName", sProjectName);
-        oGeneral.put("Created", sCreated);
-        oGeneral.put("Language", sLanguage);
-        oGeneral.put("Part", sPart);
-        oGeneral.put("Notes", sNotes);
-        oGeneral.put("Analysis", sAnalysis);
-        // Add the information as one item to [arHitDetail], which is returned in [content]
-        arHitDetails.add(oGeneral);
-      } else {
+      if (iUpdStart >=0 && iUpdCount>0) {
         // The user wants to have information starting at index [start]
-        // TODO: implement this
+        int iUpdEnd = iUpdStart + iUpdCount;
+        for (int i=iUpdStart; i<iUpdEnd;i++) {
+          // Collect and add the information of one result
+          DataObjectMapElement oRes = (DataObjectMapElement) getOneResult(oDbIndex, i);
+          if (oRes != null) { arHitDetails.add(oRes); iCount +=1; }
+        }
       }
+      // Add the number of results actually given
+      objContent.put("Count", iCount);
+      // Add the array of results
+      objContent.put("Results", arHitDetails);
       
        
  
@@ -160,11 +134,111 @@ public class RequestHandlerDbInfo extends RequestHandler {
       // Prepare the total response: indexName + status object
       DataObjectMapElement response = new DataObjectMapElement();
       response.put("indexName", indexName);
-      response.put("content", arHitDetails);
+      response.put("content", objContent);
       response.put("status", objStatus);
       return response;
     } catch (Exception ex) {
       errHandle.DoError("Providing /dbinfo information failed", ex, RequestHandlerDbInfo.class);
+      return null;
+    }
+  }
+  
+  /**
+   * getGeneralPart --
+   *    Retrieve information from the <General> part of the results database
+   * 
+   * @param oDbIndex
+   * @return 
+   */
+  private DataObject getGeneralPart(XmlResultPsdxIndex oDbIndex) {
+    try {
+      // THe user wants to have all the information in the <General> section
+      JSONObject oHdr = oDbIndex.headerInfo();
+      // Make sure certain parts are copied
+      String sProjectName = ""; // Name of CRPX that created the DB
+      String sCreated = "";     // Created date in sortable date/time
+      String sLanguage = "";    // Main language
+      String sPart = "";        // Part of corpus
+      String sNotes = "";       // Notes to the DB
+      String sAnalysis = "";    // Names of all features used
+      if (oHdr.has("ProjectName")) sProjectName = oHdr.getString("ProjectName");
+      if (oHdr.has("Created")) sCreated = oHdr.getString("Created");
+      if (oHdr.has("Language")) sLanguage = oHdr.getString("Language");
+      if (oHdr.has("Part")) sPart = oHdr.getString("Part");
+      if (oHdr.has("Notes")) sNotes = oHdr.getString("Notes");
+      if (oHdr.has("Analysis")) sAnalysis = oHdr.getString("Analysis");
+      // Put all into a datamapelement
+      DataObjectMapElement oGeneral = new DataObjectMapElement();
+      oGeneral.put("ProjectName", sProjectName);
+      oGeneral.put("Created", sCreated);
+      oGeneral.put("Language", sLanguage);
+      oGeneral.put("Part", sPart);
+      oGeneral.put("Notes", sNotes);
+      oGeneral.put("Analysis", sAnalysis);
+      // Also add a list of features
+      List<String> lFeatures = oDbIndex.featureList();
+      DataObjectList lFtList = new DataObjectList("ftlist");
+      for (int i=0;i<lFeatures.size(); i++) { lFtList.add(lFeatures.get(i)); }
+      oGeneral.put("Features", lFtList);
+      // Return the result
+      return oGeneral;
+    } catch (Exception ex) {
+      errHandle.DoError("RequestHandlerDbInfo/getGeneralPart", ex, RequestHandlerDbInfo.class);
+      return null;
+    }
+  }
+  
+  /**
+   * getOneResult --
+   *    Retrieve the <Result> information for the indicated number
+   *    and return it as a DataObjectMapElement
+   * 
+   * @param oDbIndex
+   * @param iNumber
+   * @return 
+   */
+  private DataObject getOneResult(XmlResultPsdxIndex oDbIndex, int iNumber) {
+    ByRef<XmlNode> ndxResult = new ByRef(null);
+    DataObjectMapElement objResult = null;
+    
+    try {
+      // Get the result id
+      String sResId = String.valueOf(iNumber);
+      // Get the resulting XmlNode
+      if (oDbIndex.OneResult(ndxResult, sResId)) {
+        // Check whether the returned value is not zero
+        if (ndxResult.argValue!= null) {
+          objResult = new DataObjectMapElement();
+          // Get the attribute values
+          objResult.put("ResId", sResId);
+          objResult.put("File", ndxResult.argValue.getAttributeValue("File"));
+          objResult.put("TextId", ndxResult.argValue.getAttributeValue("TextId"));
+          objResult.put("Search", ndxResult.argValue.getAttributeValue("Search"));
+          objResult.put("Cat", ndxResult.argValue.getAttributeValue("Cat"));
+          objResult.put("sentId", ndxResult.argValue.getAttributeValue("forestId"));
+          objResult.put("constId", ndxResult.argValue.getAttributeValue("eTreeId"));
+          objResult.put("Notes", ndxResult.argValue.getAttributeValue("Notes"));
+          objResult.put("SubType", ndxResult.argValue.getAttributeValue("Period"));
+          objResult.put("Text", ndxResult.argValue.getAttributeValue("Text"));
+          objResult.put("Psd", ndxResult.argValue.getAttributeValue("Psd"));
+          objResult.put("Pde", ndxResult.argValue.getAttributeValue("Pde"));
+          // Put the features into a DataObject
+          DataObjectList arFeats = new DataObjectList("features");
+          // Collect all the features
+          List<XmlNode> lFeats = ndxResult.argValue.SelectNodes("./descendant::Feature");
+          for (int i=0;i<lFeats.size();i++) {
+            XmlNode ndxFeat = lFeats.get(i);
+            arFeats.add(ndxFeat.getAttributeValue("Value"));
+          }
+          // Add the list of features for this particular result id
+          objResult.put("Features", arFeats);
+        }
+      }
+
+      // Return the result
+      return objResult;
+    } catch (Exception ex) {
+      errHandle.DoError("RequestHandlerDbInfo/getOneResult", ex, RequestHandlerDbInfo.class);
       return null;
     }
   }
