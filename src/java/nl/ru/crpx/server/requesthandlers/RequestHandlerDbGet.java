@@ -84,14 +84,10 @@ public class RequestHandlerDbGet extends RequestHandler {
       File fDbPath = new File(sDbPath);
       if (!fDbPath.exists()) return DataObject.errorObject("not_found",
               "Could not find the .xml file at: ["+sDbPath+"].");
-      // COmpress into .gz if not exists
-      String sDbGzip = sDbPath + ".gz";
-      File fDbGzip = new File(sDbGzip);
-      if (!fDbGzip.exists()) FileUtil.compressGzipFile(sDbPath, sDbGzip);
 
       // Load and prepare the content
       DataObjectMapElement objContent = new DataObjectMapElement();
-      objContent.put("db", StringUtil.compressSafe((new FileUtil()).readFile(fDbGzip)));
+      objContent.put("db", StringUtil.compressSafe((new FileUtil()).readFile(fDbPath)));
       
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
