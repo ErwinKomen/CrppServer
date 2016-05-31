@@ -71,8 +71,6 @@ public class RequestHandlerDbGet extends RequestHandler {
       // Get the CRP NAME
       String sDbName = jReq.getString("name");
       if (!sDbName.endsWith(".xml")) sDbName += ".xml";
-      // Get the type of info needed
-      String sInfo = jReq.getString("info");
       
       // Get a list of all this user's CRPs satisfying the name condition
       DataObjectList arDbList = (DataObjectList) crpManager.getDbList( sCurrentUserId, sDbName);
