@@ -48,10 +48,23 @@ public class RequestHandlerSettings extends RequestHandler {
       logger.debug("Considering request /settings: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
-      if (jReq.has("userid")) 
-        sCurrentUserId = jReq.getString("userid");
-      else
-        sCurrentUserId = "";
+      // Validate obligatory parameters
+      if (!jReq.has("userid")) return DataObject.errorObject("settings syntax", 
+              "Need to provide [userid]");      
+      // Retrieve obligatory parameter
+      sCurrentUserId = jReq.getString("userid");
+      // Look for optional parameter
+      if (jReq.has("dbase")) {
+        // Database settings are expected to follow
+        JSONObject oDbase = jReq.getJSONObject("dbase");
+        // Obligatory: name
+        if (!oDbase.has("name")) return DataObject.errorObject("settings syntax", 
+              "Object [dbase] needs [name]");      
+        String sDbName = oDbase.getString("name");
+        // Add the information that is being passed on
+        crpManager.addUserSettingsDb(sCurrentUserId, sDbName, oDbase);
+      }
+      
       // Get the settings.json for this user as DataObject
       DataObject objContent = crpManager.getUserSettingsObject(sCurrentUserId);
       

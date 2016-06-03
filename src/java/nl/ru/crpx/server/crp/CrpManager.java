@@ -223,7 +223,7 @@ public class CrpManager {
         // Write the default settings
         setUserSettings(sUserId, oSettings);
       }
-      // Double check existence
+      // Double check existence (should have been created in the previous step)
       if (fSettings.exists()) {
         // Read the contents
         oSettings = new JSONObject((new FileUtil()).readFile(fSettings));
@@ -291,15 +291,32 @@ public class CrpManager {
                 // Get this object
                 JSONObject oThis = arDbases.getJSONObject(i);
                 // Create a new object
-                DataObjectMapElement oLink = new DataObjectMapElement();
-                oLink.put("dbase", oThis.getString("dbase"));
-                oLink.put("lng", oThis.getString("lng"));
-                oLink.put("dir", oThis.getString("dir"));
+                DataObjectMapElement oDbase = new DataObjectMapElement();
+                oDbase.put("dbase", oThis.getString("dbase"));
+                oDbase.put("lng", oThis.getString("lng"));
+                oDbase.put("dir", oThis.getString("dir"));
+                // Determine sort, start and count, making use of default values
+                String sSort = ""; int iStart = 0; int iCount = 0;
+                if (oThis.has("sort")) sSort = oThis.getString("sort");
+                if (oThis.has("start")) iStart = oThis.getInt("start");
+                if (oThis.has("count")) iCount = oThis.getInt("count");
+                oDbase.put("sort", sSort);
+                oDbase.put("start", iStart);
+                oDbase.put("count", iCount);
+                // Look for column-names
+                DataObjectList arColumns = new DataObjectList("columns");
+                if (oThis.has("columns")) {
+                  JSONArray arDbCol = oThis.getJSONArray("columns");
+                  for (int j=0;j<arDbCol.length();j++) {
+                    arColumns.add(arDbCol.getString(j));
+                  }
+                }
+                oDbase.put("columns", arColumns);
                 // Add the object to the list
-                arDbaseList.add(oLink);
+                arDbaseList.add(oDbase);
               }
               // Add this element to the settings object
-              oSettings.put("links", arDbaseList);
+              oSettings.put("dbases", arDbaseList);
               break;
           }
         }
@@ -361,6 +378,55 @@ public class CrpManager {
     }
   }
   
+  /**
+   * addUserSettingsDb
+   *    Add the settings in [oUpdate] to database [sDbName] for user [sUserId]
+   * 
+   * @param sUserId
+   * @param sDbName
+   * @param oUpdate 
+   */
+  public void addUserSettingsDb(String sUserId, String sDbName, JSONObject oUpdate) {
+    JSONArray arDbases; // Array of dbase objects
+    
+    try {
+      // Read the current settings
+      JSONObject oSettings = getUserSettings(sUserId);
+      // Validate
+      if (oSettings==null) {
+        errHandle.DoError("Could not add to user settings");
+        return;
+      }
+      // Get the JSON databases array
+      if (oSettings.has("dbases")) 
+        arDbases = oSettings.getJSONArray("dbases");
+      else
+        arDbases = new JSONArray();
+      
+      // Find the correct entry
+      for (int i=0;i<arDbases.length();i++) {
+        JSONObject oDbase = arDbases.getJSONObject(i);
+        if (oDbase.getString("dbase").equals(sDbName)) {
+          // CHeck which information should be updated
+          if (oUpdate.has("lng"))   oDbase.put("lng",   oUpdate.getString("lng"));
+          if (oUpdate.has("dir"))   oDbase.put("dir",   oUpdate.getString("dir"));
+          if (oUpdate.has("sort"))  oDbase.put("sort",  oUpdate.getString("sort"));
+          if (oUpdate.has("start")) oDbase.put("start", oUpdate.getInt("start"));
+          if (oUpdate.has("count")) oDbase.put("count", oUpdate.getInt("count"));
+          if (oUpdate.has("columns")) oDbase.put("columns", oUpdate.getJSONArray("columns"));
+          // Replace it
+          arDbases.put(i, oDbase);
+          break;
+        }
+      }
+      // Add or replace the information
+      oSettings.put("dbases", arDbases);
+      // Save the adapted settings
+      setUserSettings(sUserId, oSettings);
+    } catch (Exception ex) {
+      errHandle.DoError("Could not add to user settings", ex, CrpManager.class);
+    }
+  }
   /**
    * addUserSettingsDbLng
    *    Add a link between a database and Lng/Dir for a user
@@ -463,6 +529,10 @@ public class CrpManager {
         oLink.put("crp", sCrpName);
         oLink.put("lng", sLng);
         oLink.put("dir", sDir);
+        oLink.put("sort", "");
+        oLink.put("start", 0);
+        oLink.put("count", 0);
+        oLink.put("columns", new JSONArray());
         arLinks.put(oLink);
       }
       // Add or replace the information

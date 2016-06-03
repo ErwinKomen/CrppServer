@@ -32,8 +32,8 @@ import org.apache.log4j.Logger;
 
 /**
  * RequestHandlerDbInfo
- *    Provide detailed information about a search job that has (already)
- *    been executed. The kind of information to be provided depends on the 
+ *    Provide detailed information about an available result database. 
+ *    The kind of information to be provided depends on the 
  *    parameters passed on here:
  * 
  *      userid  name under which the data is stored
