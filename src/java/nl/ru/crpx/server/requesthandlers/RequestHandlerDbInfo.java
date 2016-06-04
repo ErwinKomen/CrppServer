@@ -120,6 +120,8 @@ public class RequestHandlerDbInfo extends RequestHandler {
       }
       // Add the number of results actually given
       objContent.put("Count", iCount);
+      // Add the total number of results
+      objContent.put("Size", oDbIndex.Size());
       // Add the array of results
       objContent.put("Results", arHitDetails);
       
