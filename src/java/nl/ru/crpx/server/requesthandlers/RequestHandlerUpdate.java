@@ -276,6 +276,9 @@ public class RequestHandlerUpdate extends RequestHandler {
           // TODO: process 
           break;
         default:
+          // Get the directory where corpus files must be found
+          String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
+          // Other action depends in the value of updstart
           if (iUpdStart < 0) {
             // This is database one-result fetching, using locs/locw
             String sLocs = sSentId; String sLocw = sConstId;
@@ -287,11 +290,14 @@ public class RequestHandlerUpdate extends RequestHandler {
             oHitDetails.put("locs", sLocs);
             oHitDetails.put("locw", sLocw);
             // Create an Xml accesser for this particular type
+            // Construct the target file name
+            String sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sOneSrcFile);
+            
             switch (crpThis.intProjType) {
               case ProjPsdx:
-               objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFile); break;
+               objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart); break;
               case ProjFolia:
-               objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFile); break;              
+               objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFilePart); break;              
               case ProjAlp:
                 break;
               case ProjNegra:
@@ -325,9 +331,6 @@ public class RequestHandlerUpdate extends RequestHandler {
                     "The requested information could not be found (getHitFileInfo). Internal errors:" + 
                             errHandle.getErrList().toString());
             }
-
-            // Get the directory where corpus files must be found
-            String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
 
             String sLastFile = ""; String sOneSrcFilePart = "";
             // Start gathering the results
