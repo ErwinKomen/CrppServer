@@ -163,12 +163,14 @@ public class RequestHandlerDbInfo extends RequestHandler {
       String sPart = "";        // Part of corpus
       String sNotes = "";       // Notes to the DB
       String sAnalysis = "";    // Names of all features used
+      int iQC = 1;              // The QC number for this database
       if (oHdr.has("ProjectName")) sProjectName = oHdr.getString("ProjectName");
       if (oHdr.has("Created")) sCreated = oHdr.getString("Created");
       if (oHdr.has("Language")) sLanguage = oHdr.getString("Language");
       if (oHdr.has("Part")) sPart = oHdr.getString("Part");
       if (oHdr.has("Notes")) sNotes = oHdr.getString("Notes");
       if (oHdr.has("Analysis")) sAnalysis = oHdr.getString("Analysis");
+      if (oHdr.has("QC")) iQC = oHdr.getInt("QC");
       // Put all into a datamapelement
       DataObjectMapElement oGeneral = new DataObjectMapElement();
       oGeneral.put("ProjectName", sProjectName);
@@ -177,6 +179,7 @@ public class RequestHandlerDbInfo extends RequestHandler {
       oGeneral.put("Part", sPart);
       oGeneral.put("Notes", sNotes);
       oGeneral.put("Analysis", sAnalysis);
+      oGeneral.put("QC", iQC);
       // Also add a list of features
       List<String> lFeatures = oDbIndex.featureList();
       DataObjectList lFtList = new DataObjectList("ftlist");
