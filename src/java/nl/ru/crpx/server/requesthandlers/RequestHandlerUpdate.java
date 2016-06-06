@@ -55,7 +55,9 @@ import org.apache.log4j.Logger;
  *      crp     name of the CRP
  *      lng     the language on which the CRP has been run
  *      dir     the part of the language (corpus specification)
- *      start   which hit number to start with
+ *      start   which hit number to start with --> or "-1" if locs+locw are to be used
+ *      sentId  Identifier of the sentence from which results must be shown
+ *      constId Identifier of the constituent for the result
  *      count   the total number of hits to be returned
  *      type    the kind of information needed:
  *              "hits"    - provide list of: file / forestId / hit text
@@ -104,11 +106,11 @@ public class RequestHandlerUpdate extends RequestHandler {
       //      "crp": "bladi.crpx",  // name of corpus research project
       //      "lng": "eng_hist",    // language from which data is processed
       //      "dir": "ME",          // part of the language corpus being accessed
-      //      "start": 20,          // index of first hit
+      //      "start": 20,          // index of first hit (or -1 = do not use "start" but use locs + locw)
       //      "count": 50,          // number of hits (within the category)
       //      "qc": 3,              // QC line number
       //      "sub": "3[sv]",       // OPTIONAL: Sub category
-      //      "type": "syntax"      // Action required: "hits", "context", "msg" or "syntax"
+      //      "type": "syntax"      // Action required: "grouping", "hits", "context", "msg", "syntax"
       //   }
       // Note: if no user is given, then we should give all users and all crp's
       sReqArgument = getReqString(request);
@@ -130,6 +132,17 @@ public class RequestHandlerUpdate extends RequestHandler {
       int iUpdCount = jReq.getInt("count");
       String sUpdType = jReq.getString("type");
       int iQC = jReq.getInt("qc");
+      String sSentId = ""; String sConstId = "";
+      
+      // Check if sentId/constId are to be used
+      if (iUpdStart < 0 ) {
+        // Validate
+        if (!jReq.has("locs") || !jReq.has("locw"))
+          return DataObject.errorObject("update syntax", 
+              "One of the parameters is missing: locs, locw");
+        sSentId = jReq.getString("locs");
+        sConstId = jReq.getString("locw");
+      }
       
       // Deal with the optional parameter(s)
       if (jReq.has("sub")) sSub = jReq.getString("sub");
@@ -263,103 +276,144 @@ public class RequestHandlerUpdate extends RequestHandler {
           // TODO: process 
           break;
         default:
-          // Get a JSON Array that specifies the position where we can find the data
-          JSONArray arHitLocInfo = getHitFileInfo(crpThis, arTable, iQC, sSub, arFiles, iUpdStart, iUpdCount);
-          // Validate what we receive back
-          if (arHitLocInfo == null) {
-            // Return an appropriate error message
-            return DataObject.errorObject("bad request", 
-                  "The requested information could not be found (getHitFileInfo). Internal errors:" + 
-                          errHandle.getErrList().toString());
-          }
-
-          // Get the directory where corpus files must be found
-          String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
-
-          String sLastFile = ""; String sOneSrcFilePart = "";
-          // Start gathering the results
-          for (int i=0;i<iUpdCount && i < arHitLocInfo.length(); i++) {
-            // Calculate the number we are looking for
-            int iHitNumber = iUpdStart + i;
+          if (iUpdStart < 0) {
+            // This is database one-result fetching, using locs/locw
+            String sLocs = sSentId; String sLocw = sConstId;
+            String sOneSrcFile = arFiles.getString(0);
             // Start storing the details of this hit
             DataObjectMapElement oHitDetails = new DataObjectMapElement();
-            //JSONObject oHitDetails = new JSONObject();
-            oHitDetails.put("n", iHitNumber);
-            // Get the entry from hitlocinfo
-            JSONObject oHitLocInfo = arHitLocInfo.getJSONObject(i);
-            String sOneSrcFile = oHitLocInfo.getString("file");
-            String sLocs = oHitLocInfo.getString("locs");
-            String sLocw = oHitLocInfo.getString("locw");
+            oHitDetails.put("n", 1);
             oHitDetails.put("file", sOneSrcFile);
             oHitDetails.put("locs", sLocs);
             oHitDetails.put("locw", sLocw);
-            if (oHitLocInfo.has("msg")) oHitDetails.put("msg", oHitLocInfo.getString("msg"));
-            // Do we have this file already?
-            if (sLastFile.isEmpty() || !sLastFile.equals(sOneSrcFile)) {
-              // Construct the target file name
-              sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sOneSrcFile);
-              sLastFile = sOneSrcFile;
-              // Create an Xml accesser for this particular type
-              switch (crpThis.intProjType) {
-                case ProjPsdx:
-                 objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart); break;
-                case ProjFolia:
-                 objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFilePart); break;              
-                case ProjAlp:
-                  break;
-                case ProjNegra:
-                  break;
-                default:
-                  break;
-              }
+            // Create an Xml accesser for this particular type
+            switch (crpThis.intProjType) {
+              case ProjPsdx:
+               objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFile); break;
+              case ProjFolia:
+               objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFile); break;              
+              case ProjAlp:
+                break;
+              case ProjNegra:
+                break;
+              default:
+                break;
             }
             // Validate
             if (objXmlAcc == null)
               return DataObject.errorObject("incompatibility", 
                   "The interface to the XML files of type ["+crpThis.getProjectType()+"] is not yet implemented");
-            // Get access to the XML sentence belonging to this @locs
-            // objXmlAc = getOneSentence(crpThis, pdxThis, sOneSrcFilePart, sLocs);
-
-            // Convert [sUpdType] into an array
-            String[] arUpdType = {sUpdType};
-            if (sUpdType.contains("\\+"))
-              arUpdType = sUpdType.split("[+]");
-            else if (sUpdType.contains(" "))
-              arUpdType = sUpdType.split(" ");
-            else if (sUpdType.contains("\\|"))
-              arUpdType = sUpdType.split("[|]");
-            else if (sUpdType.contains("_"))
-              arUpdType = sUpdType.split("_");
-
-            // Get the information needed for /update
-            JSONObject oHitInfo = null;
-            for (int k=0;k<arUpdType.length;k++) {
-              switch(arUpdType[k].trim()) {
-                case "hits":    // Per hit: file // forestId // ru:back() text
-                  oHitInfo = objXmlAcc.getHitLine(sLngName, sLocs, sLocw);
-                  oHitDetails.put("preH", oHitInfo.getString("pre"));
-                  oHitDetails.put("hitH", oHitInfo.getString("hit"));
-                  oHitDetails.put("folH", oHitInfo.getString("fol"));
-                  break;
-                case "context": // Per hit the contexts: pre // clause // post
-                  oHitInfo = objXmlAcc.getHitContext(sLngName, sLocs, sLocw, 
-                          crpThis.getPrecNum(), crpThis.getFollNum());
-                  oHitDetails.put("preC", oHitInfo.getString("pre"));
-                  oHitDetails.put("hitC", oHitInfo.getString("hit"));
-                  oHitDetails.put("folC", oHitInfo.getString("fol"));
-                  break;
-                case "syntax":  // Per hit: file // forestId // node syntax (psd-kind)
-                  DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLngName, sLocs, sLocw);
-                  oHitDetails.put("allS", oHitSyntax.get("all"));
-                  oHitDetails.put("hitS", oHitSyntax.get("hit"));
-                  break;
-                default:
-                  break;
-              }
-            }
-
+            // Per hit the contexts: pre // clause // post
+            JSONObject oHitInfo = objXmlAcc.getHitContext(sLngName, sLocs, sLocw, 
+                    crpThis.getPrecNum(), crpThis.getFollNum());
+            oHitDetails.put("preC", oHitInfo.getString("pre"));
+            oHitDetails.put("hitC", oHitInfo.getString("hit"));
+            oHitDetails.put("folC", oHitInfo.getString("fol"));            
+            // Per hit: file // forestId // node syntax (psd-kind)        
+            DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLngName, sLocs, sLocw);
+            oHitDetails.put("allS", oHitSyntax.get("all"));
+            oHitDetails.put("hitS", oHitSyntax.get("hit"));            
             // Add the acquired JSONObject with info about this line
             arHitDetails.add(oHitDetails);
+          } else {
+            // Get a JSON Array that specifies the position where we can find the data
+            JSONArray arHitLocInfo = getHitFileInfo(crpThis, arTable, iQC, sSub, arFiles, iUpdStart, iUpdCount);
+            // Validate what we receive back
+            if (arHitLocInfo == null) {
+              // Return an appropriate error message
+              return DataObject.errorObject("bad request", 
+                    "The requested information could not be found (getHitFileInfo). Internal errors:" + 
+                            errHandle.getErrList().toString());
+            }
+
+            // Get the directory where corpus files must be found
+            String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
+
+            String sLastFile = ""; String sOneSrcFilePart = "";
+            // Start gathering the results
+            for (int i=0;i<iUpdCount && i < arHitLocInfo.length(); i++) {
+              // Calculate the number we are looking for
+              int iHitNumber = iUpdStart + i;
+              // Start storing the details of this hit
+              DataObjectMapElement oHitDetails = new DataObjectMapElement();
+              //JSONObject oHitDetails = new JSONObject();
+              oHitDetails.put("n", iHitNumber);
+              // Get the entry from hitlocinfo
+              JSONObject oHitLocInfo = arHitLocInfo.getJSONObject(i);
+              String sOneSrcFile = oHitLocInfo.getString("file");
+              String sLocs = oHitLocInfo.getString("locs");
+              String sLocw = oHitLocInfo.getString("locw");
+              oHitDetails.put("file", sOneSrcFile);
+              oHitDetails.put("locs", sLocs);
+              oHitDetails.put("locw", sLocw);
+              if (oHitLocInfo.has("msg")) oHitDetails.put("msg", oHitLocInfo.getString("msg"));
+              // Do we have this file already?
+              if (sLastFile.isEmpty() || !sLastFile.equals(sOneSrcFile)) {
+                // Construct the target file name
+                sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sOneSrcFile);
+                sLastFile = sOneSrcFile;
+                // Create an Xml accesser for this particular type
+                switch (crpThis.intProjType) {
+                  case ProjPsdx:
+                   objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart); break;
+                  case ProjFolia:
+                   objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFilePart); break;              
+                  case ProjAlp:
+                    break;
+                  case ProjNegra:
+                    break;
+                  default:
+                    break;
+                }
+              }
+              // Validate
+              if (objXmlAcc == null)
+                return DataObject.errorObject("incompatibility", 
+                    "The interface to the XML files of type ["+crpThis.getProjectType()+"] is not yet implemented");
+              // Get access to the XML sentence belonging to this @locs
+              // objXmlAc = getOneSentence(crpThis, pdxThis, sOneSrcFilePart, sLocs);
+
+              // Convert [sUpdType] into an array
+              String[] arUpdType = {sUpdType};
+              if (sUpdType.contains("\\+"))
+                arUpdType = sUpdType.split("[+]");
+              else if (sUpdType.contains(" "))
+                arUpdType = sUpdType.split(" ");
+              else if (sUpdType.contains("\\|"))
+                arUpdType = sUpdType.split("[|]");
+              else if (sUpdType.contains("_"))
+                arUpdType = sUpdType.split("_");
+
+              // Get the information needed for /update
+              JSONObject oHitInfo = null;
+              for (int k=0;k<arUpdType.length;k++) {
+                switch(arUpdType[k].trim()) {
+                  case "hits":    // Per hit: file // forestId // ru:back() text
+                    oHitInfo = objXmlAcc.getHitLine(sLngName, sLocs, sLocw);
+                    oHitDetails.put("preH", oHitInfo.getString("pre"));
+                    oHitDetails.put("hitH", oHitInfo.getString("hit"));
+                    oHitDetails.put("folH", oHitInfo.getString("fol"));
+                    break;
+                  case "context": // Per hit the contexts: pre // clause // post
+                    oHitInfo = objXmlAcc.getHitContext(sLngName, sLocs, sLocw, 
+                            crpThis.getPrecNum(), crpThis.getFollNum());
+                    oHitDetails.put("preC", oHitInfo.getString("pre"));
+                    oHitDetails.put("hitC", oHitInfo.getString("hit"));
+                    oHitDetails.put("folC", oHitInfo.getString("fol"));
+                    break;
+                  case "syntax":  // Per hit: file // forestId // node syntax (psd-kind)
+                    DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLngName, sLocs, sLocw);
+                    oHitDetails.put("allS", oHitSyntax.get("all"));
+                    oHitDetails.put("hitS", oHitSyntax.get("hit"));
+                    break;
+                  default:
+                    break;
+                }
+              }
+
+              // Add the acquired JSONObject with info about this line
+              arHitDetails.add(oHitDetails);
+            }
           }
           break;
       }
@@ -535,6 +589,36 @@ public class RequestHandlerUpdate extends RequestHandler {
     }
   }
   
+  private JSONObject getHitFileInfo(CorpusResearchProject crpThis, JSONArray arTable, 
+          int iQC, String sFile, String sLocs, String sLocw) {
+    JSONObject oBack = new JSONObject();
+    
+    try {
+      // Find the QC that is needed
+      if (arTable.length()<iQC-1) { errHandle.debug("getHitFileInfo: table="+arTable.length());return null;}
+      JSONObject oQClist = arTable.getJSONObject(iQC-1);
+      
+      // Get to the hits for this QC
+      if (!oQClist.has("hits")) { errHandle.debug("getHitFileInfo: oQClist.hits=null");return null;}
+      JSONArray arQClist = oQClist.getJSONArray("hits");  
+      
+      // Walk the list with hit and subcat counts for this QC
+      for (int j=0;j<arQClist.length();j++) {
+        // Access this entry as object
+        JSONObject oQCentry = (JSONObject) arQClist.get(j);
+        // Get file name and offset within the file 
+        String sFileName = oQCentry.getString("file");
+
+      }
+      
+      
+      // Return what we found
+      return oBack;
+    } catch (Exception ex) {
+      errHandle.DoError("update/getHitFileInfo failed", ex, RequestHandlerUpdate.class);
+      return null;
+    }
+  }
   /**
    * getHitFileInfo
    *    Get location information as specified by the parameters
