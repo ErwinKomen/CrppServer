@@ -73,6 +73,7 @@ public class RequestHandlerDbInfo extends RequestHandler {
       //      "name": "bladi.xml",  // name of database
       //      "start": 20,          // index of first hit
       //      "count": 50,          // number of hits (within the category)
+      //      "sort": "-Cat",       // Column name that needs sorting + minus sign if descending order
       //   }
       // Note: if no user is given, then we should give all users and all crp's
       sReqArgument = getReqString(request);
@@ -91,12 +92,19 @@ public class RequestHandlerDbInfo extends RequestHandler {
       int iUpdStart = jReq.getInt("start");
       int iUpdCount = jReq.getInt("count");
       
+      // Deal with optional parameters
+      String sSort = "";
+      if (jReq.has("sort")) sSort = jReq.getString("sort");
+      
       // Gain access to the database through a reader
       CorpusResearchProject oCrpx = new CorpusResearchProject(true);
       XmlResultPsdxIndex oDbIndex = new XmlResultPsdxIndex(oCrpx, null, errHandle);
       String sDbFile = "/etc/project/" + sCurrentUserId + "/dbase/" + sDbName;
       if (!oDbIndex.Prepare(sDbFile)) return DataObject.errorObject("availability", 
               "The database with the indicated name cannot be loaded for this user");
+      
+      // Possibly perform sorting
+      oDbIndex.Sort(sSort);
       
       // Start a content object
       DataObjectMapElement objContent = new DataObjectMapElement();
