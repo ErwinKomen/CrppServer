@@ -27,6 +27,7 @@ import nl.ru.util.ByRef;
 import nl.ru.util.json.JSONObject;
 import nl.ru.xmltools.XmlIndexTgReader;
 import nl.ru.xmltools.XmlNode;
+import nl.ru.xmltools.XmlResultDbase;
 import nl.ru.xmltools.XmlResultPsdxIndex;
 import org.apache.log4j.Logger;
 
@@ -98,7 +99,8 @@ public class RequestHandlerDbInfo extends RequestHandler {
       
       // Gain access to the database through a reader
       CorpusResearchProject oCrpx = new CorpusResearchProject(true);
-      XmlResultPsdxIndex oDbIndex = new XmlResultPsdxIndex(oCrpx, null, errHandle);
+      XmlResultDbase oDbIndex = new XmlResultDbase(oCrpx, null, errHandle);
+      // XmlResultPsdxIndex oDbIndex = new XmlResultPsdxIndex(oCrpx, null, errHandle);
       String sDbFile = "/etc/project/" + sCurrentUserId + "/dbase/" + sDbName;
       if (!oDbIndex.Prepare(sDbFile)) return DataObject.errorObject("availability", 
               "The database with the indicated name cannot be loaded for this user");
@@ -160,7 +162,7 @@ public class RequestHandlerDbInfo extends RequestHandler {
    * @param oDbIndex
    * @return 
    */
-  private DataObject getGeneralPart(XmlResultPsdxIndex oDbIndex) {
+  private DataObject getGeneralPart(XmlResultDbase oDbIndex) {
     try {
       // THe user wants to have all the information in the <General> section
       JSONObject oHdr = oDbIndex.headerInfo();
@@ -210,7 +212,7 @@ public class RequestHandlerDbInfo extends RequestHandler {
    * @param iNumber
    * @return 
    */
-  private DataObject getOneResult(XmlResultPsdxIndex oDbIndex, int iNumber) {
+  private DataObject getOneResult(XmlResultDbase oDbIndex, int iNumber) {
     ByRef<XmlNode> ndxResult = new ByRef(null);
     DataObjectMapElement objResult = null;
     
