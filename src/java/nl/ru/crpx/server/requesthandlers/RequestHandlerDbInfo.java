@@ -13,6 +13,8 @@
 package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import net.sf.saxon.s9api.QName;
@@ -24,6 +26,7 @@ import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.crpx.xq.Extensions;
 import nl.ru.util.ByRef;
+import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
 import nl.ru.xmltools.XmlIndexTgReader;
 import nl.ru.xmltools.XmlNode;
@@ -117,17 +120,36 @@ public class RequestHandlerDbInfo extends RequestHandler {
       // Start an array with the required results
       DataObjectList arHitDetails = new DataObjectList("results");
       int iCount = 0;     // Number of results actually given
-
+      
       // Find out what the operation is: if start less than zero, then provide the general info
       if (iUpdStart >=0 && iUpdCount>0) {
-        // The user wants to have information starting at index [start]
-        int iUpdEnd = iUpdStart + iUpdCount;
-        for (int i=iUpdStart; i<iUpdEnd;i++) {
-          // Collect and add the information of one result
-          DataObjectMapElement oRes = (DataObjectMapElement) getOneResult(oDbIndex, i);
-          if (oRes != null) { arHitDetails.add(oRes); iCount +=1; }
+        // Call the routine to get a number of results
+        ByRef<JSONArray> arResults = new ByRef(null);
+        arResults.argValue = new JSONArray();
+        if (!oDbIndex.getResults(arResults, iUpdStart, iUpdCount)) return DataObject.errorObject("runtime", 
+                "Could not retrieve the requested results");
+        // Copy the results to the dataobject map element
+        for (int i=0;i<arResults.argValue.length();i++) {
+          // Get this one result
+          JSONObject oResSource = arResults.argValue.getJSONObject(i);
+          DataObjectMapElement oResTarget = new DataObjectMapElement();
+          // Copy all elements from the source to the target
+          Iterator keys = oResSource.keys();
+          while (keys.hasNext()) {
+            String sKey = keys.next().toString();
+            if (sKey.equals("ResId")) {
+              oResTarget.put(sKey, oResSource.getInt(sKey));
+            } else {
+              oResTarget.put(sKey, oResSource.getString(sKey));
+            }
+          }
+          // Add to the array of hits
+          arHitDetails.add(oResTarget); 
+          // Keep track of the actual count
+          iCount +=1;
         }
       }
+      
       // Add the number of results actually given
       objContent.put("Count", iCount);
       // Add the total number of results
@@ -135,7 +157,8 @@ public class RequestHandlerDbInfo extends RequestHandler {
       // Add the array of results
       objContent.put("Results", arHitDetails);
       
-       
+      // Make sure the database connection is closed again
+      oDbIndex.close();
  
       
       // Prepare a status object to return
