@@ -132,6 +132,31 @@ public class RequestHandlerDbInfo extends RequestHandler {
           // Get this one result
           JSONObject oResSource = arResults.argValue.getJSONObject(i);
           DataObjectMapElement oResTarget = new DataObjectMapElement();
+          // COpy the 'standard' ones to the target
+          oResTarget.put("ResId", oResSource.getInt("ResId"));
+          oResTarget.put("File", oResSource.getString("File"));
+          oResTarget.put("TextId", oResSource.getString("TextId"));
+          oResTarget.put("Search", oResSource.getString("Search"));
+          oResTarget.put("Cat", oResSource.getString("Cat"));
+          oResTarget.put("Locs", oResSource.getString("Locs"));
+          oResTarget.put("Locw", oResSource.getString("Locw"));
+          oResTarget.put("Notes", oResSource.getString("Notes"));
+          oResTarget.put("SubType", oResSource.getString("SubType"));
+          oResTarget.put("Text", oResSource.getString("Text"));
+          oResTarget.put("Psd", oResSource.getString("Psd"));
+          oResTarget.put("Pde", oResSource.getString("Pde"));          
+          // COpy the features to the target
+          DataObjectList arFeatDst = new DataObjectList("features");
+          JSONArray arFeatSrc = oResSource.getJSONArray("Features");
+          for (int k=0;k<arFeatSrc.length();k++) {
+            JSONObject oFeatSrc = arFeatSrc.getJSONObject(k);
+            DataObjectMapElement oFeatDst = new DataObjectMapElement();
+            oFeatDst.put(oFeatSrc.getString("Name"), oFeatSrc.getString("Value"));
+            arFeatDst.add(oFeatDst);
+          }
+          oResTarget.put("Features", arFeatDst);
+          
+          /* --- OLD
           // Copy all elements from the source to the target
           Iterator keys = oResSource.keys();
           while (keys.hasNext()) {
@@ -142,6 +167,8 @@ public class RequestHandlerDbInfo extends RequestHandler {
               oResTarget.put(sKey, oResSource.getString(sKey));
             }
           }
+           --------- */
+          
           // Add to the array of hits
           arHitDetails.add(oResTarget); 
           // Keep track of the actual count
@@ -155,6 +182,10 @@ public class RequestHandlerDbInfo extends RequestHandler {
       objContent.put("Size", oDbIndex.Size());
       // Add the array of results
       objContent.put("Results", arHitDetails);
+      // Add the array of feature names
+      DataObjectList arFtNames = new DataObjectList("features");
+      for (String sFtName : oDbIndex.featureList()) {arFtNames.add(sFtName);}
+      objContent.put("Features", arFtNames);
       
       // Make sure the database connection is closed again
       oDbIndex.close();
