@@ -63,6 +63,7 @@ import org.apache.log4j.Logger;
  *              "hits"    - provide list of: file / forestId / hit text
  *              "context" - provide list of: pre / text / post
  *              "syntax"  - provide list of: psd-tree
+ *              "svg"     - provide SVG representation
  *              "msg"     - provide list of "msg" output
  * 
  * @author  Erwin R. Komen
@@ -110,7 +111,7 @@ public class RequestHandlerUpdate extends RequestHandler {
       //      "count": 50,          // number of hits (within the category)
       //      "qc": 3,              // QC line number
       //      "sub": "3[sv]",       // OPTIONAL: Sub category
-      //      "type": "syntax"      // Action required: "grouping", "hits", "context", "msg", "syntax"
+      //      "type": "syntax"      // Action required: "grouping", "hits", "context", "msg", "syntax", "svg"
       //   }
       // Note: if no user is given, then we should give all users and all crp's
       sReqArgument = getReqString(request);
@@ -318,7 +319,11 @@ public class RequestHandlerUpdate extends RequestHandler {
             // Per hit: file // forestId // node syntax (psd-kind)        
             DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLngName, sLocs, sLocw);
             oHitDetails.put("allS", oHitSyntax.get("all"));
-            oHitDetails.put("hitS", oHitSyntax.get("hit"));            
+            oHitDetails.put("hitS", oHitSyntax.get("hit")); 
+            // Also get the svg
+            DataObjectMapElement oHitSvg = (DataObjectMapElement) objXmlAcc.getHitSvg(sLngName, sLocs, sLocw);
+            oHitDetails.put("allG", oHitSvg.get("all"));
+            oHitDetails.put("hitG", oHitSvg.get("hit")); 
             // Add the acquired JSONObject with info about this line
             arHitDetails.add(oHitDetails);
           } else {
@@ -408,6 +413,12 @@ public class RequestHandlerUpdate extends RequestHandler {
                     DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLngName, sLocs, sLocw);
                     oHitDetails.put("allS", oHitSyntax.get("all"));
                     oHitDetails.put("hitS", oHitSyntax.get("hit"));
+                    break;
+                  case "svg":     // Per hit: svg
+                    // Also get the svg
+                    DataObjectMapElement oHitSvg = (DataObjectMapElement) objXmlAcc.getHitSvg(sLngName, sLocs, sLocw);
+                    oHitDetails.put("allG", oHitSvg.get("all"));
+                    oHitDetails.put("hitG", oHitSvg.get("hit")); 
                     break;
                   default:
                     break;
