@@ -662,6 +662,11 @@ public class RequestHandlerUpdate extends RequestHandler {
       iUpdCurrent = iUpdStart -1;
       iUpdFinish = iUpdCurrent + iUpdCount -1;
       sHitFile = "";
+      // Validate
+      if (iUpdStart < 0) {
+        // We cannot process this
+        return arBack;
+      }
       // Find the QC that is needed
       if (arTable.length()<iQC-1) { errHandle.debug("getHitFileInfo: table="+arTable.length());return null;}
       JSONObject oQClist = arTable.getJSONObject(iQC-1);
@@ -703,6 +708,7 @@ public class RequestHandlerUpdate extends RequestHandler {
       int iLastK = 0;
       // Walk the list with hit and subcat counts for this QC
       for (int j=0;j<arQClist.length();j++) {
+        boolean bHasHit = false;
         // Access this entry as object
         JSONObject oQCentry = (JSONObject) arQClist.get(j);
         // Calculate where we are in terms of hit numbers
@@ -710,16 +716,18 @@ public class RequestHandlerUpdate extends RequestHandler {
           if (oQCentry.getInt("count")>0) {
             iEntryFirst = iEntryLast + 1;
             iEntryLast = iEntryFirst + oQCentry.getInt("count")-1;
+            bHasHit = true;
           }
         } else {
           int iSubCatCount = oQCentry.getJSONArray("subs").getInt(iSubCat);
           if (iSubCatCount>0) {
             iEntryFirst = iEntryLast + 1;
             iEntryLast = iEntryFirst + oQCentry.getJSONArray("subs").getInt(iSubCat)-1;
+            bHasHit = true;
           }
         }
         // should we process this entry?
-        while (iUpdCurrent >= iEntryFirst && iUpdCurrent <= iEntryLast && 
+        while (bHasHit && iUpdCurrent >= iEntryFirst && iUpdCurrent <= iEntryLast && 
                 iUpdCurrent <= iUpdFinish) {
           // Get file name and offset within the file 
           String sFileName = oQCentry.getString("file");
