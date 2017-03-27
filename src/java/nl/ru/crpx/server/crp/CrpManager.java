@@ -723,6 +723,7 @@ public class CrpManager {
     String sPartPath = "";  // Path to the Lng/Part
     Deque<Path> stack = new ArrayDeque<>();
     JSONObject oTextList = null;
+    DataObjectMapElement oBack = new DataObjectMapElement();
     String sExtFind = "";
     
     try {
@@ -740,7 +741,8 @@ public class CrpManager {
         // Create the array from the JSON contents of this file
         oTextList = Json.read(pJsonTextList.toFile());
         // TODO: extract list from the JSON object
-        
+        oBack.put("count", 0);
+        oBack.put("list", arList);
       } else {
         // We need to have an idea of he file extensions
         List<String> lExtList = CorpusResearchProject.getTextExtList();
@@ -777,16 +779,14 @@ public class CrpManager {
             }
           }
         }
-        // Transform into a JSON object
-        oTextList = new JSONObject(); 
-
-        // Save it
-
-        // Sort the result
+        // Sort the result on "name"
         arList.sort("name");
+        // Prepare what is returned
+        oBack.put("count", arList.size());
+        oBack.put("list", arList);
       }
-      // Return the array
-      return arList;      
+      // Return the back object
+      return oBack;      
     } catch (Exception ex) {
       errHandle.DoError("Could not get a list of texts", ex, CrpManager.class);
       return null;
