@@ -723,11 +723,13 @@ public class CrpManager {
     String sPartPath = "";  // Path to the Lng/Part
     Deque<Path> stack = new ArrayDeque<>();
     JSONObject oTextList = null;
+    String sExtFind = "";
     
     try {
       // Make sure we look for what is needed
       if (sSearch.isEmpty()) sSearch = "*";
       if (sPart.isEmpty()) sPart = "*";
+      if (!sExtType.isEmpty()) sExtFind = CorpusResearchProject.getTextExt(sExtType);      
       // Create a list to reply
       DataObjectList arList = new DataObjectList("list");
       // Get the directory from where to search
@@ -749,7 +751,6 @@ public class CrpManager {
           try(DirectoryStream<Path> streamSub = Files.newDirectoryStream(stack.pop(), sSearch)) {
             // FInd the correct extension for this sub directory
             String sExt = "";
-            if (!sExtType.isEmpty()) sExt = CorpusResearchProject.getTextExt(sExtType);
             // Walk all these items
             for (Path pathSub : streamSub) {
               if (Files.isDirectory(pathSub)) {
@@ -757,8 +758,10 @@ public class CrpManager {
               } else {
                 String sFile = pathSub.getFileName().toString();
                 // Check if the file has an extension in the list of allowed ones
-                if (sExtType.isEmpty()) 
+                if (sExtType.isEmpty() || sExtFind.isEmpty()) 
                   sExt = getExtensionInList(lExtList, sFile);
+                else
+                  sExt = (sFile.endsWith(sExtFind)) ? sExtFind : "";
                 if (!sExt.isEmpty()) {
                   // We found a match -- get the complete path
                   String sSubThis = pathSub.toAbsolutePath().toString();
