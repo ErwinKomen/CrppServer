@@ -50,7 +50,7 @@ import org.apache.log4j.Logger;
 @WebServlet(name = "crppw", 
   urlPatterns = {"/crpchg", "/crpdel", "/crpget", "/crpinfo", "/crpset", "/dbinfo", "/dblist", "/dbset", "/dbupload",
                  "/debug", "/exe", "/load", "/save", "/settings", "/show", "/statusxq", 
-                 "/update"})
+                 "/txtlist", "/update"})
 public class CrpPserver extends HttpServlet  {
   // The servlet contains a 'logger'
   private static final Logger logger = Logger.getLogger(CrpPserver.class);

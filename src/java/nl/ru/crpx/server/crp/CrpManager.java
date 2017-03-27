@@ -9,11 +9,14 @@ package nl.ru.crpx.server.crp;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import net.sf.saxon.s9api.DocumentBuilder;
@@ -24,11 +27,13 @@ import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.server.CrpPserver;
+import static nl.ru.crpx.server.crp.CrpUser.sCorpusBase;
 import static nl.ru.crpx.server.crp.CrpUser.sProjectBase;
 import nl.ru.crpx.tools.ErrHandle;
 import nl.ru.util.ByRef;
 import nl.ru.util.DateUtil;
 import nl.ru.util.FileUtil;
+import nl.ru.util.Json;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
 import nl.ru.xmltools.XmlDocument;
@@ -709,6 +714,112 @@ public class CrpManager {
       return null;
     }
   }
+
+  public DataObject getTextList(String sLng, String sPart, String sExtType) {
+    // Look for all kinds of texts
+    return getTextList(sLng, sPart, sExtType, "*");
+  }  
+  public DataObject getTextList(String sLng, String sPart, String sExtType, String sSearch) {
+    String sPartPath = "";  // Path to the Lng/Part
+    Deque<Path> stack = new ArrayDeque<>();
+    JSONObject oTextList = null;
+    
+    try {
+      // Make sure we look for what is needed
+      if (sSearch.isEmpty()) sSearch = "*";
+      if (sPart.isEmpty()) sPart = "*";
+      // Create a list to reply
+      DataObjectList arList = new DataObjectList("list");
+      // Get the directory from where to search
+      Path pRoot = Paths.get(FileUtil.nameNormalize(sCorpusBase), sLng);
+      // Check to see if a file-list .json file already exists
+      Path pJsonTextList = Paths.get(pRoot.toString(), "textlist.json");
+      if (Files.exists(pJsonTextList)) {
+        // Create the array from the JSON contents of this file
+        oTextList = Json.read(pJsonTextList.toFile());
+        // TODO: extract list from the JSON object
+        
+      } else {
+        // We need to have an idea of he file extensions
+        List<String> lExtList = CorpusResearchProject.getTextExtList();
+        // Start creating this list
+        stack.push(pRoot);
+        while (!stack.isEmpty()) {
+          // Get all the items inside "dir"
+          try(DirectoryStream<Path> streamSub = Files.newDirectoryStream(stack.pop(), sSearch)) {
+            // FInd the correct extension for this sub directory
+            String sExt = "";
+            if (!sExtType.isEmpty()) sExt = CorpusResearchProject.getTextExt(sExtType);
+            // Walk all these items
+            for (Path pathSub : streamSub) {
+              if (Files.isDirectory(pathSub)) {
+                stack.push(pathSub);
+              } else {
+                String sFile = pathSub.getFileName().toString();
+                // Check if the file has an extension in the list of allowed ones
+                if (sExtType.isEmpty()) 
+                  sExt = getExtensionInList(lExtList, sFile);
+                if (!sExt.isEmpty()) {
+                  // We found a match -- get the complete path
+                  String sSubThis = pathSub.toAbsolutePath().toString();
+                  String sName = sFile.substring(0, sFile.length() - sExt.length());
+                  // Add this to the list
+                  DataObjectMapElement oData = new DataObjectMapElement();
+                  oData.put("file", sSubThis);
+                  oData.put("name", sName);
+                  oData.put("ext", sExt);
+                  arList.add(oData);
+                }
+              }
+            }
+          }
+        }
+        // Transform into a JSON object
+        oTextList = new JSONObject(); 
+
+        // Save it
+
+        // Sort the result
+        arList.sort("name");
+      }
+      // Return the array
+      return arList;      
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get a list of texts", ex, CrpManager.class);
+      return null;
+    }
+  }
+  
+  /**
+   * getExtensionInList -- 
+   *    Check if [sName] has an extension in the list [lExtList]
+   *    If this is so, then return that extension
+   *    Otherwise return ""
+   * 
+   * @param lExtList
+   * @param sName
+   * @return 
+   */
+  private String getExtensionInList(List<String> lExtList, String sName)  {
+    boolean bMatch = false;
+    String sFound = "";
+    
+    try {
+      // Check if the file extension matches
+      for (String sExt : lExtList) {
+        if (sName.endsWith(sExt)) {
+          bMatch = true; 
+          sFound = sExt;
+          break;
+        }
+      }   
+      return sFound;      
+    } catch (Exception ex) {
+      errHandle.DoError("Could not determine the extension", ex, CrpManager.class);
+      return sFound;
+    }
+  }
+  
   /**
    * getDbList -- get a list of the corpus research databases (.xml) for the
    *              indicated user
