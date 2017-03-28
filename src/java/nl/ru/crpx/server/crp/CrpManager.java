@@ -725,34 +725,39 @@ public class CrpManager {
     JSONObject oTextList = null;
     DataObjectMapElement oBack = new DataObjectMapElement();
     String sExtFind = "";
+    int iTexts = 0;     // Total number of texts found
     
     try {
       // Make sure we look for what is needed
       if (sSearch.isEmpty()) sSearch = "*";
       if (sPart.isEmpty()) sPart = "*";
       if (!sExtType.isEmpty()) sExtFind = CorpusResearchProject.getTextExt(sExtType);      
-      // Create a list to reply
-      DataObjectList arList = new DataObjectList("list");
       // Get the directory from where to search
       Path pRoot = Paths.get(FileUtil.nameNormalize(sCorpusBase), sLng);
       // Check to see if a file-list .json file already exists
-      Path pJsonTextList = Paths.get(pRoot.toString(), "textlist.json");
-      if (Files.exists(pJsonTextList)) {
-        // Create the array from the JSON contents of this file
-        oTextList = Json.read(pJsonTextList.toFile());
-        // TODO: extract list from the JSON object
-        oBack.put("count", 0);
-        oBack.put("list", arList);
-      } else {
-        // We need to have an idea of he file extensions
+      String sTextListName = (sExtType.isEmpty()) ? "textlist-all" : "textlist-" + sExtType;
+      Path pJsonTextList = Paths.get(pRoot.toString(), sTextListName+".json");
+      if (!Files.exists(pJsonTextList)) {
+        // Create an array that will hold all
+        JSONArray arDir = new JSONArray();
+        // We need to have an idea of the file extensions that are possible
+        // (this is needed when sExtType or sExtFind is empty)
         List<String> lExtList = CorpusResearchProject.getTextExtList();
         // Start creating this list
         stack.push(pRoot);
         while (!stack.isEmpty()) {
           // Get all the items inside "dir"
-          try(DirectoryStream<Path> streamSub = Files.newDirectoryStream(stack.pop(), sSearch)) {
+          Path pThis = stack.pop();
+          try(DirectoryStream<Path> streamSub = Files.newDirectoryStream(pThis, sSearch)) {
+            // Create an object for this directory
+            JSONObject oDirContent = new JSONObject();
+            JSONArray arContent = new JSONArray();
+            int iDirCount = 0;
+            oDirContent.put("count", iDirCount);
+            oDirContent.put("path", pThis.toAbsolutePath().toString());
+            oDirContent.put("list", arContent);
             // FInd the correct extension for this sub directory
-            String sExt = "";
+            String sExt;
             // Walk all these items
             for (Path pathSub : streamSub) {
               if (Files.isDirectory(pathSub)) {
@@ -769,22 +774,72 @@ public class CrpManager {
                   String sSubThis = pathSub.toAbsolutePath().toString();
                   String sName = sFile.substring(0, sFile.length() - sExt.length());
                   // Add this to the list
-                  DataObjectMapElement oData = new DataObjectMapElement();
-                  oData.put("file", sSubThis);
-                  oData.put("name", sName);
-                  oData.put("ext", sExt);
-                  arList.add(oData);
+                  JSONObject oFile = new JSONObject();
+                  oFile.put("name", sName);
+                  oFile.put("ext", sExt);
+                  // Get the metadata information from this file
+                  // JSONObject oMeta = Corpus
+                  
+                  // Global text counter
+                  iTexts++;                  
+                  // Add this item to the array
+                  arContent.put(oFile);
+                  iDirCount++;
                 }
               }
             }
+            // CHeck if anything has been added in this directory
+            if (iDirCount > 0) {
+              // Then adapt this object
+              oDirContent.put("count", iDirCount);
+              oDirContent.put("list", arContent);
+              // Add this object to the list
+              arDir.put(oDirContent);
+            }
           }
         }
-        // Sort the result on "name"
-        arList.sort("name");
-        // Prepare what is returned
-        oBack.put("count", arList.size());
-        oBack.put("list", arList);
+        // Create a json object with the contents
+        JSONObject oTotal = new JSONObject();
+        oTotal.put("paths", arDir.length());
+        oTotal.put("texts", iTexts);
+        oTotal.put("list", arDir);
+        // Store this object into a file
+        Json.write(oTotal, pJsonTextList.toFile());
+        
       }
+      // We now should have the correct file stored -- load it
+      oTextList = Json.read(pJsonTextList.toFile());
+      
+      // Transform this list into a DataObject
+      int iPaths = oTextList.getInt("paths");
+      oBack.put("paths", iPaths);
+      oBack.put("texts", oTextList.getInt("texts"));
+      DataObjectList arList = new DataObjectList("list");
+      // Fill this list
+      for (int i=0; i < iPaths; i++) {
+        JSONObject oDir = oTextList.getJSONArray("list").getJSONObject(i);
+        DataObjectMapElement oDataDir = new DataObjectMapElement();
+        oDataDir.put("count", oDir.getInt("count"));
+        oDataDir.put("path", oDir.getString("path"));
+        // Get a list of items for this path
+        DataObjectList arDirList = new DataObjectList("list");
+        for (int j=0;j< oDir.getInt("count"); j++) {
+          JSONObject oFile = oDir.getJSONArray("list").getJSONObject(j);
+          DataObjectMapElement oDataFile = new DataObjectMapElement();
+          oDataFile.put("name", oFile.getString("name"));
+          oDataFile.put("ext", oFile.getString("ext"));
+          // Add this file object to the list
+          arDirList.add(oDataFile);
+        }        
+        // Add the lis tof items to the current datadir object
+        oDataDir.put("list", arDirList);        
+        // Add this directory content to the overall list
+        arList.add(oDataDir);
+      }
+      
+      // Place the overal list into the dataobject
+      oBack.put("list", arList);
+      
       // Return the back object
       return oBack;      
     } catch (Exception ex) {
