@@ -36,7 +36,9 @@ import nl.ru.util.FileUtil;
 import nl.ru.util.Json;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
+import nl.ru.xmltools.Parse;
 import nl.ru.xmltools.XmlDocument;
+import nl.ru.xmltools.XmlForest;
 import nl.ru.xmltools.XmlIndexRaReader;
 import nl.ru.xmltools.XmlNode;
 
@@ -731,7 +733,25 @@ public class CrpManager {
       // Make sure we look for what is needed
       if (sSearch.isEmpty()) sSearch = "*";
       if (sPart.isEmpty()) sPart = "*";
-      if (!sExtType.isEmpty()) sExtFind = CorpusResearchProject.getTextExt(sExtType);      
+      if (!sExtType.isEmpty()) sExtFind = CorpusResearchProject.getTextExt(sExtType);   
+      
+      // We need to have a corpus research project to continue...
+      CorpusResearchProject crpThis = new CorpusResearchProject(true);
+      // And the one thing that needs to be set in the project is the type
+      switch (sExtType) {
+        case "psdx":
+          crpThis.setForType(XmlForest.ForType.PsdxIndex);
+          break;
+        case "folia":
+          crpThis.setForType(XmlForest.ForType.FoliaIndex);
+          break;
+        default:
+          errHandle.DoError("getTextList: unknown extension type ["+sExtType+"]");
+          return null;
+      }
+      // Get a Parse object
+      Parse prsThis = new Parse(crpThis, this.errHandle);
+      
       // Get the directory from where to search
       Path pRoot = Paths.get(FileUtil.nameNormalize(sCorpusBase), sLng);
       // Check to see if a file-list .json file already exists
@@ -778,7 +798,13 @@ public class CrpManager {
                   oFile.put("name", sName);
                   oFile.put("ext", sExt);
                   // Get the metadata information from this file
-                  // JSONObject oMeta = Corpus
+                  JSONObject oMeta = prsThis.getMetaInfo(sSubThis);
+                  // Add all the metadata to [oFile]
+                  Iterator keys = oMeta.keys();
+                  while (keys.hasNext()) {
+                    String sKey = keys.next().toString();
+                    oFile.put(sKey, oMeta.getString(sKey));
+                  }
                   
                   // Global text counter
                   iTexts++;                  
