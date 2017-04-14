@@ -852,8 +852,16 @@ public class CrpManager {
         for (int j=0;j< oDir.getInt("count"); j++) {
           JSONObject oFile = oDir.getJSONArray("list").getJSONObject(j);
           DataObjectMapElement oDataFile = new DataObjectMapElement();
-          oDataFile.put("name", oFile.getString("name"));
-          oDataFile.put("ext", oFile.getString("ext"));
+          // Extract all the metadata from [oFile]
+          Iterator keys = oFile.keys();
+          while (keys.hasNext()) {
+            String sKey = keys.next().toString();
+            oDataFile.put(sKey, oFile.getString(sKey));
+          }
+          
+          
+          // oDataFile.put("name", oFile.getString("name"));
+          // oDataFile.put("ext", oFile.getString("ext"));
           // Add this file object to the list
           arDirList.add(oDataFile);
         }        
