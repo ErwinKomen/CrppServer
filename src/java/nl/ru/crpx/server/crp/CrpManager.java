@@ -26,6 +26,7 @@ import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
+import nl.ru.crpx.project.CorpusResearchProject.ProjType;
 import nl.ru.crpx.server.CrpPserver;
 import static nl.ru.crpx.server.crp.CrpUser.sCorpusBase;
 import static nl.ru.crpx.server.crp.CrpUser.sProjectBase;
@@ -741,9 +742,11 @@ public class CrpManager {
       switch (sExtType) {
         case "psdx":
           crpThis.setForType(XmlForest.ForType.PsdxIndex);
+          crpThis.setTextExt(ProjType.ProjPsdx);
           break;
         case "folia":
           crpThis.setForType(XmlForest.ForType.FoliaIndex);
+          crpThis.setTextExt(ProjType.ProjFolia);
           break;
         default:
           errHandle.DoError("getTextList: unknown extension type ["+sExtType+"]");
