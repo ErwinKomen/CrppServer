@@ -733,7 +733,6 @@ public class CrpManager {
     try {
       // Make sure we look for what is needed
       if (sSearch.isEmpty()) sSearch = "*";
-      if (sPart.isEmpty()) sPart = "*";
       if (!sExtType.isEmpty()) sExtFind = CorpusResearchProject.getTextExt(sExtType);   
       
       // We need to have a corpus research project to continue...
@@ -757,6 +756,11 @@ public class CrpManager {
       
       // Get the directory from where to search
       Path pRoot = Paths.get(FileUtil.nameNormalize(sCorpusBase), sLng);
+      // If [part] is specified, then we need to get a sub directory
+      if (!sPart.isEmpty()) {
+        // Find the first sub directory containing [sPart] under [pRoot]
+        pRoot =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sPart));
+      }
       // Check to see if a file-list .json file already exists
       String sTextListName = (sExtType.isEmpty()) ? "textlist-all" : "textlist-" + sExtType;
       Path pJsonTextList = Paths.get(pRoot.toString(), sTextListName+".json");
