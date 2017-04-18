@@ -810,7 +810,14 @@ public class CrpManager {
                   Iterator keys = oMeta.keys();
                   while (keys.hasNext()) {
                     String sKey = keys.next().toString();
-                    oFile.put(sKey, oMeta.getString(sKey));
+                    switch(sKey) {
+                      case "size":
+                        oFile.put(sKey, oMeta.getInt(sKey));
+                        break;
+                      default:
+                        oFile.put(sKey, oMeta.getString(sKey));
+                        break;
+                    }
                   }
                   
                   // Global text counter
@@ -863,7 +870,14 @@ public class CrpManager {
           Iterator keys = oFile.keys();
           while (keys.hasNext()) {
             String sKey = keys.next().toString();
-            oDataFile.put(sKey, oFile.getString(sKey));
+            switch (sKey) {
+              case "size":
+                oDataFile.put(sKey, oFile.getInt(sKey));
+                break;
+              default:
+                oDataFile.put(sKey, oFile.getString(sKey));
+                break;
+            }
           }
           
           
