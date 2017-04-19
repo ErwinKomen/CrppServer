@@ -359,19 +359,24 @@ public class RequestHandlerUpdate extends RequestHandler {
               if (sLastFile.isEmpty() || !sLastFile.equals(sOneSrcFile)) {
                 // Construct the target file name
                 sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sOneSrcFile);
-                sLastFile = sOneSrcFile;
-                // Create an Xml accesser for this particular type
-                switch (crpThis.intProjType) {
-                  case ProjPsdx:
-                   objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart); break;
-                  case ProjFolia:
-                   objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFilePart); break;              
-                  case ProjAlp:
-                    break;
-                  case ProjNegra:
-                    break;
-                  default:
-                    break;
+                // CHeck what gets returned
+                if (sOneSrcFilePart.isEmpty()) {
+                  errHandle.DoError("REQ update: skipping file that cannot be found ["+sOneSrcFile+"]");
+                } else {
+                  sLastFile = sOneSrcFile;
+                  // Create an Xml accesser for this particular type
+                  switch (crpThis.intProjType) {
+                    case ProjPsdx:
+                     objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart); break;
+                    case ProjFolia:
+                     objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFilePart); break;              
+                    case ProjAlp:
+                      break;
+                    case ProjNegra:
+                      break;
+                    default:
+                      break;
+                  }
                 }
               }
               // Validate

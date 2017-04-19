@@ -94,14 +94,26 @@ public class RequestHandlerCrpChg extends RequestHandler {
       // Initialise changed
       boolean bChanged = false;
       DataObjectList dlList = new DataObjectList("list");
-
+      JSONArray arChanges = null;
+      
       // List or item?
       if (bIsList) {
         // Get the list: it is escape-coded
         String sList = decompressSafe(jReq.getString("list"));
-        // JSONArray arChanges = jReq.getJSONArray("list");
+        // CHeck what we have: is it proper?
+        if (!sList.startsWith("[") || !sList.endsWith("]")) {
+          // THis is no proper JSON list
+          return DataObject.errorObject("syntax", "The /crpchg 'list' parameter does not contain JSON");
+        }
         errHandle.debug("List unescaped = [" + sList + "]");
-        JSONArray arChanges = new JSONArray(sList);
+        // Just in case
+        try {
+          arChanges = new JSONArray(sList);
+        } catch (Exception ex) {
+          // Return with an appropriate error message
+          return DataObject.errorObject("syntax", 
+                  "The /crpchg 'list' parameter gives a JSON error: "+ ex.getMessage());
+        }
         // Walk all changes
         for (int i=0;i<arChanges.length();i++) {
           JSONObject oItem = arChanges.getJSONObject(i);
