@@ -48,9 +48,10 @@ import org.apache.log4j.Logger;
    01/jun/2015   ERK Created for Java
    --------------------------------------------------------------------------- */
 @WebServlet(name = "crppw", 
-  urlPatterns = {"/crpchg", "/crpdel", "/crpget", "/crpinfo", "/crpset", "/dbinfo", "/dblist", "/dbset", "/dbupload",
-                 "/debug", "/exe", "/load", "/save", "/settings", "/show", "/statusxq", 
-                 "/txtlist", "/update"})
+  urlPatterns = {"/crpchg", "/crpdel", "/crpget", "/crpinfo", "/crpset", "/dbinfo", 
+                 "/dblist", "/dbset", "/dbupload", "/debug", "/exe", 
+                 "/load", "/save", "/settings", "/show", "/statusxq", 
+                 "/txt", "/txtlist", "/update"})
 public class CrpPserver extends HttpServlet  {
   // The servlet contains a 'logger'
   private static final Logger logger = Logger.getLogger(CrpPserver.class);

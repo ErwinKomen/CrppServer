@@ -291,6 +291,9 @@ public abstract class RequestHandler {
         case "statusxq":  // Opvragen status XqJob
           requestHandler = new RequestHandlerStatusXq(servlet, request, indexName);
           break;
+        case "txt":       // Get the surface text of one particular text
+          requestHandler = new RequestHandlerTxt(servlet, request, indexName);
+          break;
         case "txtlist":    // List available texts for a corpus (part)
           requestHandler = new RequestHandlerTxtList(servlet, request, indexName);
           break;

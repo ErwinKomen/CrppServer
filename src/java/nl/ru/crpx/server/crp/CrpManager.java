@@ -718,6 +718,90 @@ public class CrpManager {
     }
   }
 
+  /**
+   * getText
+   *    REtrieve the text called [sTextName] and return it as a DataObject
+   * 
+   * @param sLng
+   * @param sPart
+   * @param sExtType
+   * @param sTextName
+   * @return 
+   */
+  public DataObject getText(String sLng, String sPart, String sExtType, String sTextName) {
+    String sExtFind = "";         // The actual extension we need to find
+    String sFileName = "";        // The xml FILE containing the text
+    String sFileJson = "";        // THe zipped json file containing the surface text
+    JSONObject oText = null;      // JSON representation of what we return
+    DataObjectMapElement oBack = new DataObjectMapElement();
+    
+    try {
+      // Validate
+      if (sTextName.isEmpty() || sExtType.isEmpty()) {
+        errHandle.DoError("getText: empty text name or extension type");
+        return null;
+      }
+      // Get the extension type correctly
+      sExtFind = CorpusResearchProject.getTextExt(sExtType);  
+      sFileName = sTextName;
+      // Determine file name
+      if (!sFileName.endsWith(sExtFind)) sFileName += sExtFind;
+      // Determine the zipped json file name
+      sFileJson = sFileName.substring(0, sFileName.lastIndexOf(sExtFind)) + ".json.gz";
+      
+      // We need to have an (empty) corpus research project to continue...
+      CorpusResearchProject crpThis = new CorpusResearchProject(true);
+      // And the one thing that needs to be set in the project is the type
+      switch (sExtType) {
+        case "psdx":
+          crpThis.setForType(XmlForest.ForType.PsdxIndex);
+          crpThis.setTextExt(ProjType.ProjPsdx);
+          break;
+        case "folia":
+          crpThis.setForType(XmlForest.ForType.FoliaIndex);
+          crpThis.setTextExt(ProjType.ProjFolia);
+          break;
+        default:
+          errHandle.DoError("getText: unknown extension type ["+sExtType+"]");
+          return null;
+      }
+      // Get a Parse object
+      Parse prsThis = new Parse(crpThis, this.errHandle);
+      
+      // Get the directory from where to search
+      Path pRoot = Paths.get(FileUtil.nameNormalize(sCorpusBase), sLng);
+      // If [part] is specified, then we need to get a sub directory
+      if (!sPart.isEmpty()) {
+        // Find the first sub directory containing [sPart] under [pRoot]
+        pRoot =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sPart));
+      }
+      // And then WITHIN this path, we need to get the specified file name
+      Path pFile =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileName));
+      Path pJson =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileJson));
+      // Validate what gets returned
+      if (!Files.exists(pFile)) {
+        errHandle.DoError("getText: cannot find text in ["+sFileName+"]");
+        return null;
+      }
+      if (Files.exists(pJson)) {
+        // THere is a zipped JSON file: read and unzip it
+        oText = new JSONObject(FileUtil.decompressGzipString(pJson.toString()));
+      } else {
+        // TODO: create the [oText]
+      }
+      
+      // TODO: Convert the JSON object into a dataobject
+ 
+      
+      // Return the back object
+      return oBack;      
+    } catch (Exception ex) {
+      errHandle.DoError("Could not get the specified text", ex, CrpManager.class);
+      return null;
+    }
+  }  
+  
+  
   public DataObject getTextList(String sLng, String sPart, String sExtType) {
     // Look for all kinds of texts
     return getTextList(sLng, sPart, sExtType, "*");
