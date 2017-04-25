@@ -726,20 +726,23 @@ public class CrpManager {
    * @param sPart
    * @param sExtType
    * @param sTextName
+   * @param iStart      - Starting sentence
+   * @param iPageSize   - Number of sentences to fetch
    * @return 
    */
-  public DataObject getText(String sLng, String sPart, String sExtType, String sTextName) {
+  public DataObject getText(String sLng, String sPart, String sExtType, 
+          String sTextName, int iStart, int iPageSize) {
     String sExtFind = "";         // The actual extension we need to find
     String sFileName = "";        // The xml FILE containing the text
     String sFileJson = "";        // THe zipped json file containing the surface text
+    String sExtJsonZip = ".json.gz";
     JSONObject oText = null;      // JSON representation of what we return
     DataObjectMapElement oBack = new DataObjectMapElement();
     
     try {
       // Validate
       if (sTextName.isEmpty() || sExtType.isEmpty()) {
-        errHandle.DoError("getText: empty text name or extension type");
-        return null;
+        return DataObject.errorObject("INTERNAL_ERROR", "/txt - getText: empty text name or extension type");
       }
       // Get the extension type correctly
       sExtFind = CorpusResearchProject.getTextExt(sExtType);  
@@ -747,7 +750,7 @@ public class CrpManager {
       // Determine file name
       if (!sFileName.endsWith(sExtFind)) sFileName += sExtFind;
       // Determine the zipped json file name
-      sFileJson = sFileName.substring(0, sFileName.lastIndexOf(sExtFind)) + ".json.gz";
+      sFileJson = sFileName.substring(0, sFileName.lastIndexOf(sExtFind)) + sExtJsonZip;
       
       // We need to have an (empty) corpus research project to continue...
       CorpusResearchProject crpThis = new CorpusResearchProject(true);
@@ -762,8 +765,7 @@ public class CrpManager {
           crpThis.setTextExt(ProjType.ProjFolia);
           break;
         default:
-          errHandle.DoError("getText: unknown extension type ["+sExtType+"]");
-          return null;
+          return DataObject.errorObject("INTERNAL_ERROR", "/txt - getText: unknown extension type ["+sExtType+"]");
       }
       // Get a Parse object
       Parse prsThis = new Parse(crpThis, this.errHandle);
@@ -779,25 +781,47 @@ public class CrpManager {
       Path pFile =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileName));
       Path pJson =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileJson));
       // Validate what gets returned
-      if (!Files.exists(pFile)) {
-        errHandle.DoError("getText: cannot find text in ["+sFileName+"]");
-        return null;
+      if (pFile.toString().isEmpty() || !Files.exists(pFile)) {
+        return DataObject.errorObject("INTERNAL_ERROR", "/txt - getText: cannot find text in ["+sFileName+"]");
       }
-      if (Files.exists(pJson)) {
+      if (!pJson.toString().isEmpty() && Files.exists(pJson)) {
         // THere is a zipped JSON file: read and unzip it
         oText = new JSONObject(FileUtil.decompressGzipString(pJson.toString()));
       } else {
+        // Create the correct path for the JSON
+        pJson = Paths.get(pFile.toAbsolutePath().toString().replace(sExtFind, sExtJsonZip));
         // TODO: create the [oText]
+        oText  = prsThis.getSurfaceText(pFile.toAbsolutePath().toString(), iStart, iPageSize);
+        // Save the oText compressed
+        if (oText != null) {
+          FileUtil.compressGzipString(oText.toString(2), pJson.toAbsolutePath().toString());
+        }
       }
       
       // TODO: Convert the JSON object into a dataobject
+      if (oText != null && oText.has("count") && oText.has("line")) {
+        // Seems to be valid
+        oBack.put("count", oText.getInt("count"));
+        JSONArray arLine = oText.getJSONArray("line");
+        DataObjectList doLine = new DataObjectList("line");
+        for (int i=0;i<arLine.length();i++) {
+          JSONObject oLine = arLine.getJSONObject(i);
+          // Create a dataobject for this item
+          DataObjectMapElement doItem = new DataObjectMapElement();
+          doItem.put("id", oLine.getString("id"));
+          doItem.put("text", oLine.getString("text"));
+          // Add the dataobject to the d-o-list
+          doLine.add(doItem);
+        }
+        // Add the d-o-list to what we return
+        oBack.put("line", doLine);
+      }
  
       
       // Return the back object
       return oBack;      
     } catch (Exception ex) {
-      errHandle.DoError("Could not get the specified text", ex, CrpManager.class);
-      return null;
+      return DataObject.errorObject("INTERNAL_ERROR", "/txt - getText error: ["+ex.getMessage()+"]");
     }
   }  
   

@@ -50,6 +50,8 @@ public class RequestHandlerTxt extends RequestHandler {
     String sDir = "";
     String sExt = "";
     String sTextName = "";
+    int iStart = 0;
+    int iPageSize = 20;
     String[] arArgObl = {"userid","lng","ext","name"};
     int i;
 
@@ -82,14 +84,17 @@ public class RequestHandlerTxt extends RequestHandler {
       // Look for optional arguments
       if (jReq.has("dir")) sDir = jReq.getString("dir");
       // Get a list of all the databases available for the indicated user
-      DataObject objContent = crpManager.getText( sLng, sDir, sExt, sTextName);
-      if (objContent == null) 
+      DataObject objContent = crpManager.getText( sLng, sDir, sExt, sTextName, iStart, iPageSize);
+      if (objContent == null) {
         return DataObject.errorObject("INTERNAL_ERROR", "Txt failed on 'getText()' ");
+      } else if (DataObject.isErrorObject(objContent)) {
+        return objContent;
+      }
       
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
       objStatus.put("code", "completed");
-      objStatus.put("message", "See the list of texts in the [content] section");
+      objStatus.put("message", "See the text divided in line objects in the [content] section");
       objStatus.put("userid", userId);
       // Prepare the total response: indexName + status object
       DataObjectMapElement response = new DataObjectMapElement();
