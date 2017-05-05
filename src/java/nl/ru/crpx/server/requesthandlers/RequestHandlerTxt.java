@@ -15,11 +15,16 @@ package nl.ru.crpx.server.requesthandlers;
 import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
+import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import static nl.ru.crpx.server.requesthandlers.RequestHandler.errHandle;
 import static nl.ru.crpx.server.requesthandlers.RequestHandler.getReqString;
+import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONObject;
+import nl.ru.xmltools.XmlAccess;
+import nl.ru.xmltools.XmlAccessFolia;
+import nl.ru.xmltools.XmlAccessPsdx;
 import org.apache.log4j.Logger;
 
 
@@ -45,11 +50,15 @@ public class RequestHandlerTxt extends RequestHandler {
   
   @Override
   public DataObject handle() {
-    String sFilter = "*";   // Default filter
+    String sFilter = "*";             // Default filter
     String sLng = "eng_hist";
     String sDir = "";
     String sExt = "";
     String sTextName = "";
+    String sActionType = "sentences"; // Default type is to fetch sentences of a text
+    String sSentId = "";              // Optional parameter
+    String sConstId = "";             // Optional parameter
+    DataObject objContent = null;
     int iStart = 0;
     int iPageSize = 20;
     String[] arArgObl = {"userid","lng","ext","name"};
@@ -66,6 +75,9 @@ public class RequestHandlerTxt extends RequestHandler {
       //      "dir":    "lModE",            - Optional: corpus-part to look in
       //      "ext":    "psdx",             - Extension type: 'psdx' or 'folia'
       //      "name":   "abcdefgh[.psdx]"   - Name of the text, with or without extension
+      //      "type":   "syntax"            - Optional. If present: "grouping", "hits", "context", "msg", "syntax", "svg"
+      //      "locs":   "fw.p.1.s.3"        - Optional. Sentence identifier
+      //      "locw":   "fw.p.1.s.3.su.5"   - Optional. syntactic unit identifier
       //   }
       // Note: if no user is given, then we should give all users and all crp's
       logger.debug("Considering request /txt: " + sReqArgument);
@@ -81,15 +93,34 @@ public class RequestHandlerTxt extends RequestHandler {
       sExt = jReq.getString("ext");
       sCurrentUserId = jReq.getString("userid");
       sTextName = jReq.getString("name");
+      
       // Look for optional arguments
       if (jReq.has("dir")) sDir = jReq.getString("dir");
-      // Get a list of all the databases available for the indicated user
-      DataObject objContent = crpManager.getText( sLng, sDir, sExt, sTextName, iStart, iPageSize);
-      if (objContent == null) {
-        return DataObject.errorObject("INTERNAL_ERROR", "Txt failed on 'getText()' ");
-      } else if (DataObject.isErrorObject(objContent)) {
-        return objContent;
+      if (jReq.has("type")) sActionType = jReq.getString("type");
+      if (jReq.has("locs")) sSentId = jReq.getString("locs");
+      if (jReq.has("locw")) sConstId = jReq.getString("locw");
+      
+      // Action depends on the type
+      switch(sActionType) {
+        case "sentences":
+          // Get iPageSize sentences from a text starting at iStart
+          objContent = crpManager.getText( sLng, sDir, sExt, sTextName, iStart, iPageSize);
+          if (objContent == null) {
+            return DataObject.errorObject("INTERNAL_ERROR", "Txt failed on 'getText()' ");
+          } else if (DataObject.isErrorObject(objContent)) {
+            return objContent;
+          }
+          break;
+        default:
+          // Get iPageSize sentences from a text starting at iStart
+          objContent = crpManager.getSentInfo( sLng, sDir, sExt, sTextName, sActionType, sSentId, sConstId);
+          if (objContent == null) {
+            return DataObject.errorObject("INTERNAL_ERROR", "Txt failed on 'getSentInfo()' ");
+          } else if (DataObject.isErrorObject(objContent)) {
+            return objContent;
+          }
       }
+      
       
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();

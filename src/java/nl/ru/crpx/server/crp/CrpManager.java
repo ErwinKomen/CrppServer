@@ -38,6 +38,9 @@ import nl.ru.util.Json;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
 import nl.ru.xmltools.Parse;
+import nl.ru.xmltools.XmlAccess;
+import nl.ru.xmltools.XmlAccessFolia;
+import nl.ru.xmltools.XmlAccessPsdx;
 import nl.ru.xmltools.XmlDocument;
 import nl.ru.xmltools.XmlForest;
 import nl.ru.xmltools.XmlIndexRaReader;
@@ -60,8 +63,8 @@ public class CrpManager {
   static List<CrpUser> loc_crpUserList; // List of CrpUser elements
   static int loc_id;                    // the Id of each CrpUser element
   static CrpPserver servlet;            // My own link to the search manager
-  static Processor objSaxon;
-  static DocumentBuilder objSaxDoc;
+  private Processor objSaxon;           // NOTE: this was 'static'
+  private DocumentBuilder objSaxDoc;    // NOTE: this was 'static'
   // ================ Class initialisation =====================================
   public CrpManager(CrpPserver servlet, ErrHandle errHandle) {
     // Initialize the id
@@ -717,6 +720,135 @@ public class CrpManager {
       return null;
     }
   }
+  
+  /**
+   * getSentInfo
+   *    Get information on the sentence 
+   * 
+   *    Text:         identified by sLng/sPart/sExtType/sTextName
+   *    Sentence:     sLocs/sLocw
+   *    Kind of info: sActionTYpe
+   * 
+   * @param sLng
+   * @param sPart
+   * @param sExtType
+   * @param sTextName
+   * @param sActionType
+   * @param sLocs
+   * @param sLocw
+   * @return 
+   */
+  public DataObject getSentInfo(String sLng, String sPart, String sExtType, 
+          String sTextName, String sActionType, String sLocs, String sLocw) {
+    String sExtFind = "";         // The actual extension we need to find
+    String sFileName = "";        // The xml FILE containing the text
+    XmlAccess objXmlAcc = null;   // XML access to the file(chunk) we are working with
+    DataObjectMapElement oBack = new DataObjectMapElement();
+
+    try {
+      // Validate
+      if (sTextName.isEmpty() || sExtType.isEmpty()) {
+        return DataObject.errorObject("INTERNAL_ERROR", 
+                "/txt - getSentInfo: empty text name or extension type");
+      }
+      // Get the extension type correctly
+      sExtFind = CorpusResearchProject.getTextExt(sExtType);  
+      sFileName = sTextName;
+      // Determine file name
+      if (!sFileName.endsWith(sExtFind)) sFileName += sExtFind;
+       // We need to have an (empty) corpus research project to continue...
+      CorpusResearchProject crpThis = new CorpusResearchProject(true);
+      // Initialize access to ANY document associated with this CRP
+      XmlDocument pdxThis = new XmlDocument(this.objSaxDoc, this.objSaxon);
+      // Get the directory where corpus files must be found
+      String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLng, sPart);
+      // Construct the target file name
+      String sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sFileName);
+      
+      // And the one thing that needs to be set in the project is the type
+      switch (sExtType) {
+        case "psdx":
+          crpThis.setForType(XmlForest.ForType.PsdxIndex);
+          crpThis.setTextExt(ProjType.ProjPsdx);
+          objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart);
+          // Get the top node if that is needed
+          if (sLocw.isEmpty()) {
+            XmlNode ndxTop = objXmlAcc.getTopNode(sLocs);
+            sLocw = ndxTop.getAttributeValue("Id");
+          }
+          break;
+        case "folia":
+          crpThis.setForType(XmlForest.ForType.FoliaIndex);
+          crpThis.setTextExt(ProjType.ProjFolia);
+          objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFilePart);
+          // Get the top node if that is needed
+          if (sLocw.isEmpty()) {
+            XmlNode ndxTop = objXmlAcc.getTopNode(sLocs);
+            sLocw = ndxTop.getAttributeValue("xml:id");
+          }
+          break;
+        default:
+          return DataObject.errorObject("INTERNAL_ERROR", 
+                  "/txt - getText: unknown extension type ["+sExtType+"]");
+      }
+      // Validate
+      if (objXmlAcc == null)
+        return DataObject.errorObject("incompatibility", 
+            "The interface to the XML files of type ["+crpThis.getProjectType()+"] is not yet implemented");
+
+      // Convert [sActionType] into an array
+      String[] arActionType = {sActionType};
+      if (sActionType.contains("\\+"))
+        arActionType = sActionType.split("[+]");
+      else if (sActionType.contains(" "))
+        arActionType = sActionType.split(" ");
+      else if (sActionType.contains("\\|"))
+        arActionType = sActionType.split("[|]");
+      else if (sActionType.contains("_"))
+        arActionType = sActionType.split("_");
+      
+      // Start storing the details of this hit
+      JSONObject oHitInfo = null;
+
+      // Walk the list of actions
+      for (int k=0;k<arActionType.length;k++) {
+        switch(arActionType[k].trim()) {  
+          case "hits":    // Per hit: file // forestId // ru:back() text
+            oHitInfo = objXmlAcc.getHitLine(sLng, sLocs, sLocw);
+            oBack.put("preH", oHitInfo.getString("pre"));
+            oBack.put("hitH", oHitInfo.getString("hit"));
+            oBack.put("folH", oHitInfo.getString("fol"));
+            break;
+          case "context": // Per hit the contexts: pre // clause // post
+            oHitInfo = objXmlAcc.getHitContext(sLng, sLocs, sLocw, 
+                    crpThis.getPrecNum(), crpThis.getFollNum());
+            oBack.put("preC", oHitInfo.getString("pre"));
+            oBack.put("hitC", oHitInfo.getString("hit"));
+            oBack.put("folC", oHitInfo.getString("fol"));
+            break;
+          case "syntax":  // Per hit: file // forestId // node syntax (psd-kind)
+            DataObjectMapElement oHitSyntax = (DataObjectMapElement) objXmlAcc.getHitSyntax(sLng, sLocs, sLocw);
+            oBack.put("allS", oHitSyntax.get("all"));
+            oBack.put("hitS", oHitSyntax.get("hit"));
+            break;
+          case "svg":     // Per hit: svg
+            // Also get the svg
+            DataObjectMapElement oHitSvg = (DataObjectMapElement) objXmlAcc.getHitSvg(sLng, sLocs, sLocw);
+            oBack.put("allG", oHitSvg.get("all"));
+            oBack.put("hitG", oHitSvg.get("hit")); 
+            break;
+          default:
+            break;
+        }
+      }     
+      
+      // Return the back object
+      return oBack;      
+    } catch (Exception ex) {
+      return DataObject.errorObject("INTERNAL_ERROR", 
+              "/txt - getText error: ["+ex.getMessage()+"]");
+    }
+  }
 
   /**
    * getText
@@ -742,7 +874,8 @@ public class CrpManager {
     try {
       // Validate
       if (sTextName.isEmpty() || sExtType.isEmpty()) {
-        return DataObject.errorObject("INTERNAL_ERROR", "/txt - getText: empty text name or extension type");
+        return DataObject.errorObject("INTERNAL_ERROR", 
+                "/txt - getText: empty text name or extension type");
       }
       // Get the extension type correctly
       sExtFind = CorpusResearchProject.getTextExt(sExtType);  
@@ -765,7 +898,8 @@ public class CrpManager {
           crpThis.setTextExt(ProjType.ProjFolia);
           break;
         default:
-          return DataObject.errorObject("INTERNAL_ERROR", "/txt - getText: unknown extension type ["+sExtType+"]");
+          return DataObject.errorObject("INTERNAL_ERROR", 
+                  "/txt - getText: unknown extension type ["+sExtType+"]");
       }
       // Get a Parse object
       Parse prsThis = new Parse(crpThis, this.errHandle);
@@ -782,7 +916,8 @@ public class CrpManager {
       Path pJson =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileJson));
       // Validate what gets returned
       if (pFile.toString().isEmpty() || !Files.exists(pFile)) {
-        return DataObject.errorObject("INTERNAL_ERROR", "/txt - getText: cannot find text in ["+sFileName+"]");
+        return DataObject.errorObject("INTERNAL_ERROR", 
+                "/txt - getText: cannot find text in ["+sFileName+"]");
       }
       if (!pJson.toString().isEmpty() && Files.exists(pJson)) {
         // THere is a zipped JSON file: read and unzip it
