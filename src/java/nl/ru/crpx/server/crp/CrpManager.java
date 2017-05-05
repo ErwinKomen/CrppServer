@@ -831,6 +831,11 @@ public class CrpManager {
             oBack.put("allS", oHitSyntax.get("all"));
             oBack.put("hitS", oHitSyntax.get("hit"));
             break;
+          case "tree":    // Per hit: file // forestId // hierarchical nodes + features
+            DataObjectMapElement oHitTree = (DataObjectMapElement) objXmlAcc.getHitTree(sLng, sLocs, sLocw);
+            oBack.put("allT", oHitTree.get("all"));
+            oBack.put("hitT", oHitTree.get("hit"));
+            break;
           case "svg":     // Per hit: svg
             // Also get the svg
             DataObjectMapElement oHitSvg = (DataObjectMapElement) objXmlAcc.getHitSvg(sLng, sLocs, sLocw);
