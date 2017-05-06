@@ -759,7 +759,8 @@ public class CrpManager {
        // We need to have an (empty) corpus research project to continue...
       CorpusResearchProject crpThis = new CorpusResearchProject(true);
       // Initialize access to ANY document associated with this CRP
-      XmlDocument pdxThis = new XmlDocument(this.objSaxDoc, this.objSaxon);
+      // NOTE: the Saxon processor must be taken from the [crpThis]
+      XmlDocument pdxThis = new XmlDocument(crpThis);
       // Get the directory where corpus files must be found
       String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLng, sPart);
       // Construct the target file name
