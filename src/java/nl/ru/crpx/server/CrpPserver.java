@@ -290,6 +290,9 @@ public class CrpPserver extends HttpServlet  {
         switch (name) {
           case "resultsType": value = "XML"; break;
           case "waitfortotal": value= "no"; break;
+          
+          // Setting and getting a TMPDIR is not needed for anything!
+          /*
           case "tmpdir": 
             // Create temporary file
             File fTmp = File.createTempFile("tmp", ".txt");
@@ -297,6 +300,10 @@ public class CrpPserver extends HttpServlet  {
             String sPath = fTmp.getAbsolutePath();
             value = sPath.substring(0,sPath.lastIndexOf(File.separator));
             // value = Files.createTempDirectory("tmpdir").toString(); // System.getProperty("tmpdir");
+            
+            // Delete the file again
+            fTmp.delete();
+          */
         }
         // Check if it has some kind of value
         if (value.length() == 0) continue;
