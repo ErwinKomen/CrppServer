@@ -162,6 +162,9 @@ public class RequestHandlerExecute extends RequestHandler {
                     sCurrentUserId + "]";
           return DataObject.errorObject("INTERNAL_ERROR", sMsg);
         }
+        // Make sure the Corpus Research Project gets the correct WorkQueue
+        prjThis.setWorkQueue(servlet.getWorkQueue(sCurrentUserId));
+        
         // ====================================================================
         // Add the project name as parameter (but not as "query"!!!)
         this.searchParam.put("name", sCrpName);

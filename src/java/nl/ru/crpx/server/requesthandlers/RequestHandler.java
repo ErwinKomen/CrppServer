@@ -29,6 +29,7 @@ import nl.ru.crpx.project.CorpusResearchProject;
 import nl.ru.crpx.search.Job;
 import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.search.SearchParameters;
+import nl.ru.crpx.search.WorkQueueXqF;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.util.UserFile;
 import nl.ru.crpx.tools.ErrHandle;
@@ -64,6 +65,9 @@ public abstract class RequestHandler {
   static String sProjectBase = "/etc/project/"; // Base directory where user-spaces are stored
   static String sCorpusBase = "/etc/corpora/";  // Base directory where corpora are stored
   static List<UserFile> lUserFile = new ArrayList<>();
+  /** The work queue to handle XqF jobs */
+  WorkQueueXqF workQueue;
+  
   // ================== Other instance variables ================================
   String sReqArgument = "";     // Request arguments
   String sLastReqArg = "";      // Arguments of last request

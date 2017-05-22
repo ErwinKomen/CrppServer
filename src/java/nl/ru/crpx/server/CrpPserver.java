@@ -15,6 +15,8 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -27,6 +29,7 @@ import nl.ru.crpx.dataobject.DataObjectPlain;
 import nl.ru.crpx.project.PrjTypeManager;
 import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.search.SearchParameters;
+import nl.ru.crpx.search.WorkQueueXqF;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.crpx.server.requesthandlers.RequestHandler;
 import nl.ru.crpx.tools.ErrHandle;
@@ -56,16 +59,42 @@ public class CrpPserver extends HttpServlet  {
   // The servlet contains a 'logger'
   private static final Logger logger = Logger.getLogger(CrpPserver.class);
   private static final ErrHandle errHandle = new ErrHandle(CrpPserver.class);
+  private static final int maxThreadsPerUser = 20;
   // =================== instance variables ==================================
   private static JSONObject config;             // Configuration object
   private static SearchManager searchManager;   // The search manager we make
   private static PrjTypeManager prjTypeManager; // 
   private static CrpManager crpManager;         // Link to the CRP-User list manager
+  private static List<WorkQueueXqF> lWorkQueue = null; // List of user-owned work queues
   // =================== Simple getters =======================================
   public SearchManager getSearchManager() {return searchManager;}
   public PrjTypeManager getPrjTypeManager() { return prjTypeManager;}
   public JSONObject getConfig() { return config;}
   public CrpManager getCrpManager() { return crpManager; }
+  // =================== More advanced getter: work queue for XqF =============
+  public WorkQueueXqF getWorkQueue(String sUserId) {
+    int i;                // Counter
+    WorkQueueXqF wqThis;  // Temporary
+    
+    // Walk the list of queues
+    if (lWorkQueue != null) {
+      for(i=0;i<lWorkQueue.size();i++) {
+        wqThis = lWorkQueue.get(i);
+        if (sUserId.equals(wqThis.user())) {
+          return wqThis;
+        }
+        // Debug info
+        errHandle.debug("getWorkQueue: skipping ["+wqThis.user()+"]");
+      }
+    }
+    // Getting here means: no work queue for this user yet
+    wqThis = new WorkQueueXqF(errHandle, sUserId, maxThreadsPerUser);
+    // Add it
+    lWorkQueue.add(wqThis);
+    // Debug info
+    errHandle.debug("getWorkQueue: created for ["+wqThis.user()+"]");
+    return wqThis;
+  }
   
 /* ---------------------------------------------------------------------------
    Name: init
@@ -130,6 +159,9 @@ public class CrpPserver extends HttpServlet  {
       } catch (Exception e) {
         errHandle.DoError("Error reading JSON config file: " +  e.getMessage());
       }
+      
+      // Initialise a list of work queues
+      lWorkQueue = new ArrayList<>();
 
       // Create a new search manager
       searchManager = new SearchManager(config);
