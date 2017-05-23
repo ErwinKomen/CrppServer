@@ -15,6 +15,9 @@ package nl.ru.crpx.server.requesthandlers;
 import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
+import nl.ru.crpx.search.RunTxtList;
+import nl.ru.crpx.search.SearchParameters;
+import nl.ru.crpx.search.WorkQueueXqF;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.util.json.JSONObject;
@@ -55,7 +58,7 @@ public class RequestHandlerTxtList extends RequestHandler {
       sCurrentUserId = "";
       // Get the JSON string arguments we need to process, e.g:
       //   {  "userid": "erkomen",
-      //      "lng":    "eng_hist",
+      //      "lng":    "eng_hist",   NOTE: May also be 'all'
       //      "dir":    "lModE",
       //      "ext":    "psdx"
       //   }
@@ -74,14 +77,40 @@ public class RequestHandlerTxtList extends RequestHandler {
       if (jReq.has("ext")) sExt = jReq.getString("ext");
       // Check for a filter
       if (jReq.has("filter")) sFilter = jReq.getString("filter");
+      // Prepare the search parameters
+      SearchParameters searchTxtLpar = new SearchParameters(this.searchMan);
+      searchTxtLpar.put("lng", sLng);
+      searchTxtLpar.put("dir", sDir);
+      searchTxtLpar.put("ext", sExt);
+      // Create a new job
+      RunTxtList oneTxtList = new RunTxtList(errHandle, null, sCurrentUserId, searchTxtLpar);
+      
+      // Start the job to get the textlist
+      workQueue = servlet.getWorkManager().getWorkQueue(sCurrentUserId);
+      errHandle.debug("TxtList: Workman created ["+servlet.getWorkManager().dateCreated()+"]");
+      try {
+        // Start executing the TxtList function
+        workQueue.execute(oneTxtList);
+      } catch (Exception ex) {
+        // If there is an error, then we return that
+        return DataObject.errorObject("INTERNAL_ERROR", 
+                "TxtList failed to execute txtlist job #"+
+                oneTxtList.getJobId()+": "+ex.getMessage());
+      }
+      DataObjectMapElement objContent = new DataObjectMapElement();
+      objContent.put("jobid", oneTxtList.getJobId());
+      
+ /*     
       // Get a list of all the databases available for the indicated user
       DataObject objContent = crpManager.getTextList( sLng, sDir, sExt, sFilter);
       if (objContent == null) 
         return DataObject.errorObject("INTERNAL_ERROR", "TxtList failed on 'getTextList()' ");
+*/
       
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
-      objStatus.put("code", "completed");
+      // objStatus.put("code", "completed");
+      objStatus.put("code", "started");
       objStatus.put("message", "See the list of texts in the [content] section");
       objStatus.put("userid", userId);
       // Prepare the total response: indexName + status object

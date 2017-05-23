@@ -27,8 +27,10 @@ import nl.ru.crpx.dataobject.DataFormat;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectPlain;
 import nl.ru.crpx.project.PrjTypeManager;
+import nl.ru.crpx.search.RunAny;
 import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.search.SearchParameters;
+import nl.ru.crpx.search.WorkManager;
 import nl.ru.crpx.search.WorkQueueXqF;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.crpx.server.requesthandlers.RequestHandler;
@@ -53,7 +55,7 @@ import org.apache.log4j.Logger;
 @WebServlet(name = "crppw", 
   urlPatterns = {"/crpchg", "/crpdel", "/crpget", "/crpinfo", "/crpset", "/dbinfo", 
                  "/dblist", "/dbset", "/dbupload", "/debug", "/exe", 
-                 "/load", "/save", "/settings", "/show", "/statusxq", 
+                 "/load", "/save", "/settings", "/show", "/statusxl", "/statusxq", 
                  "/txt", "/txtlist", "/update"})
 public class CrpPserver extends HttpServlet  {
   // The servlet contains a 'logger'
@@ -65,37 +67,14 @@ public class CrpPserver extends HttpServlet  {
   private static SearchManager searchManager;   // The search manager we make
   private static PrjTypeManager prjTypeManager; // 
   private static CrpManager crpManager;         // Link to the CRP-User list manager
-  private static List<WorkQueueXqF> lWorkQueue = null; // List of user-owned work queues
+  private static WorkManager workManager = null;
+  // private static List<WorkQueueXqF> lWorkQueue = null; // List of user-owned work queues
   // =================== Simple getters =======================================
   public SearchManager getSearchManager() {return searchManager;}
   public PrjTypeManager getPrjTypeManager() { return prjTypeManager;}
   public JSONObject getConfig() { return config;}
   public CrpManager getCrpManager() { return crpManager; }
-  // =================== More advanced getter: work queue for XqF =============
-  public WorkQueueXqF getWorkQueue(String sUserId) {
-    int i;                // Counter
-    WorkQueueXqF wqThis;  // Temporary
-    
-    // Walk the list of queues
-    if (lWorkQueue != null) {
-      for(i=0;i<lWorkQueue.size();i++) {
-        wqThis = lWorkQueue.get(i);
-        if (sUserId.equals(wqThis.user())) {
-          return wqThis;
-        }
-        // Debug info
-        errHandle.debug("getWorkQueue: skipping ["+wqThis.user()+"]");
-      }
-    }
-    // Getting here means: no work queue for this user yet
-    wqThis = new WorkQueueXqF(errHandle, sUserId, maxThreadsPerUser);
-    // Add it
-    lWorkQueue.add(wqThis);
-    // Debug info
-    errHandle.debug("getWorkQueue: created for ["+wqThis.user()+"]");
-    return wqThis;
-  }
-  
+  public WorkManager getWorkManager() { return workManager; }
 /* ---------------------------------------------------------------------------
    Name: init
    Goal: Main entry point for the CRPP-webserver
@@ -160,9 +139,6 @@ public class CrpPserver extends HttpServlet  {
         errHandle.DoError("Error reading JSON config file: " +  e.getMessage());
       }
       
-      // Initialise a list of work queues
-      lWorkQueue = new ArrayList<>();
-
       // Create a new search manager
       searchManager = new SearchManager(config);
 
@@ -171,6 +147,11 @@ public class CrpPserver extends HttpServlet  {
       
       // Create a new CRP-user list manager
       crpManager = new CrpManager(this, errHandle);
+      
+      // Create a new Runnable job work manager
+      if (workManager == null) {
+        workManager = new WorkManager(errHandle);
+      }
 
       // Show that we are ready
       logger.info("CrpPserver: server is ready.");
