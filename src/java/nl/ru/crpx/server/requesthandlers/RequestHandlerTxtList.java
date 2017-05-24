@@ -50,6 +50,7 @@ public class RequestHandlerTxtList extends RequestHandler {
     String sLng = "eng_hist";
     String sDir = "";
     String sExt = "";
+    String sJobId;
 
     try {
       debug(logger, "REQ TxtList");
@@ -87,7 +88,7 @@ public class RequestHandlerTxtList extends RequestHandler {
       
       // Start the job to get the textlist
       workQueue = servlet.getWorkManager().getWorkQueue(sCurrentUserId);
-      errHandle.debug("TxtList: Workman created ["+servlet.getWorkManager().dateCreated()+"]");
+      // errHandle.debug("TxtList: Workman created ["+servlet.getWorkManager().dateCreated()+"]");
       try {
         // Start executing the TxtList function
         workQueue.execute(oneTxtList);
@@ -98,15 +99,13 @@ public class RequestHandlerTxtList extends RequestHandler {
                 oneTxtList.getJobId()+": "+ex.getMessage());
       }
       DataObjectMapElement objContent = new DataObjectMapElement();
-      objContent.put("jobid", oneTxtList.getJobId());
+      // Get the ID of the job that has now been started
+      sJobId = oneTxtList.getJobId();
+      objContent.put("jobid", sJobId);
       
- /*     
-      // Get a list of all the databases available for the indicated user
-      DataObject objContent = crpManager.getTextList( sLng, sDir, sExt, sFilter);
-      if (objContent == null) 
-        return DataObject.errorObject("INTERNAL_ERROR", "TxtList failed on 'getTextList()' ");
-*/
-      
+      // Debugging: make the job id available for watchers
+      errHandle.debug("/txtlist: jobid = "+sJobId);
+            
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
       // objStatus.put("code", "completed");

@@ -232,7 +232,7 @@ public abstract class RequestHandler {
         lastIP = thisIP;
         errHandle.debug("IP: " + thisIP + " at: " + getCurrentTimeStamp());
       }
-      errHandle.debug("REQ calling for: " + indexName);
+      // errHandle.debug("REQ calling for: " + indexName);
       // Choose the RequestHandler subclass
       RequestHandler requestHandler = null;
       switch (indexName) {

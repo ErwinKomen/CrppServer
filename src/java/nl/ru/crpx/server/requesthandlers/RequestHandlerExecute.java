@@ -196,6 +196,7 @@ public class RequestHandlerExecute extends RequestHandler {
         // Check if there are any previous results for this job that can be re-used
         if (bCache && prjThis.hasResults(oQuery)) {
           // Initiate a result-fetch job
+          errHandle.debug("ReUsejob calling searchXqReUse");
           search = searchMan.searchXqReUse(prjThis, sCurrentUserId, searchParam);
           // Check for returns with errors
           if (errHandle.bInterrupt || errHandle.hasErr()) {
