@@ -608,6 +608,7 @@ public class RequestHandlerUpdate extends RequestHandler {
     }
   }
   
+  /*
   private JSONObject getHitFileInfo(CorpusResearchProject crpThis, JSONArray arTable, 
           int iQC, String sFile, String sLocs, String sLocw) {
     JSONObject oBack = new JSONObject();
@@ -637,7 +638,9 @@ public class RequestHandlerUpdate extends RequestHandler {
       errHandle.DoError("update/getHitFileInfo failed", ex, RequestHandlerUpdate.class);
       return null;
     }
-  }
+  }*/
+  
+  
   /**
    * getHitFileInfo
    *    Get location information as specified by the parameters
@@ -750,35 +753,45 @@ public class RequestHandlerUpdate extends RequestHandler {
             sHitFile = crpThis.getHitsDir() + sLastPart;
             // Validate existence
             File fThis = new File(sHitFile);
+            /* OLD: the .hits file must exist
             if (!fThis.exists()) { errHandle.debug("getHitFileInfo: non existing fThis="+sHitFile);return null;}
-            // Read the file into a JSON array
-            JSONObject oHitF = new JSONObject((new FileUtil()).readFile(fThis));
-            JSONArray arHitF = oHitF.getJSONArray("hits");
-            // Get to the results part of this QC combined with possible subcat
-            if (sSub.isEmpty()) {
-              // It is sufficient to get the "results" array from the indicated QC
-              arRes = ((JSONObject) arHitF.get(iQC-1)).getJSONArray("results");
-            } else {
-              // First get the "percat" array of the indicated QC
-              JSONArray arPerCat = ((JSONObject) arHitF.get(iQC-1)).getJSONArray("percat");
-              arRes = null;
-              // Walk this array looking for the correct subcat
-              for (int k=0;k<arPerCat.length();k++) {
-                // Access this 'percat' element
-                JSONObject oPerCat = arPerCat.getJSONObject(k);
-                // Does this 'percat' element involve our requested sub-category?
-                if (oPerCat.getString("cat").equals(sSub)) {
-                  // Found it!
-                  arRes = oPerCat.getJSONArray("results");
-                  // get out of the loop
-                  break;
+            */
+            // What to do if this file exists or not: assume everything has been calculated
+            if (fThis.exists()) {
+              // Read the file into a JSON array
+              JSONObject oHitF = new JSONObject((new FileUtil()).readFile(fThis));
+              JSONArray arHitF = oHitF.getJSONArray("hits");
+              // Get to the results part of this QC combined with possible subcat
+              if (sSub.isEmpty()) {
+                // It is sufficient to get the "results" array from the indicated QC
+                arRes = ((JSONObject) arHitF.get(iQC-1)).getJSONArray("results");
+              } else {
+                // First get the "percat" array of the indicated QC
+                JSONArray arPerCat = ((JSONObject) arHitF.get(iQC-1)).getJSONArray("percat");
+                arRes = null;
+                // Walk this array looking for the correct subcat
+                for (int k=0;k<arPerCat.length();k++) {
+                  // Access this 'percat' element
+                  JSONObject oPerCat = arPerCat.getJSONObject(k);
+                  // Does this 'percat' element involve our requested sub-category?
+                  if (oPerCat.getString("cat").equals(sSub)) {
+                    // Found it!
+                    arRes = oPerCat.getJSONArray("results");
+                    // get out of the loop
+                    break;
+                  }
                 }
               }
+              // Initialize the result index
+              // iResIdx = 0;
+              // Reset the 'lastk' variable
+              iLastK = 0;
+            } else {
+              // There really is no 'else' part: if there is no .hits file available,
+              //     then that means that there are no hits in this particular file
+              // So, we can just continue...
             }
-            // Initialize the result index
-            // iResIdx = 0;
-            // Reset the 'lastk' variable
-            iLastK = 0;
+
           }
           // (2) validate: we can only continue if there are any results in this file
           if (arRes != null && arRes.length()>0) {
