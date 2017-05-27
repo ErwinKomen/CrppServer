@@ -324,6 +324,9 @@ public class RequestHandlerUpdate extends RequestHandler {
             DataObjectMapElement oHitSvg = (DataObjectMapElement) objXmlAcc.getHitSvg(sLngName, sLocs, sLocw);
             oHitDetails.put("allG", oHitSvg.get("all"));
             oHitDetails.put("hitG", oHitSvg.get("hit")); 
+            DataObjectMapElement oHitTree = (DataObjectMapElement) objXmlAcc.getHitTree(sLngName, sLocs, sLocw);
+            oHitDetails.put("allT", oHitTree.get("all"));
+            oHitDetails.put("hitT", oHitTree.get("hit"));
             // Add the acquired JSONObject with info about this line
             arHitDetails.add(oHitDetails);
           } else {
@@ -424,6 +427,11 @@ public class RequestHandlerUpdate extends RequestHandler {
                     DataObjectMapElement oHitSvg = (DataObjectMapElement) objXmlAcc.getHitSvg(sLngName, sLocs, sLocw);
                     oHitDetails.put("allG", oHitSvg.get("all"));
                     oHitDetails.put("hitG", oHitSvg.get("hit")); 
+                    break;
+                  case "tree":    // Per hit: file // forestId // hierarchical nodes + features
+                    DataObjectMapElement oHitTree = (DataObjectMapElement) objXmlAcc.getHitTree(sLngName, sLocs, sLocw);
+                    oHitDetails.put("allT", oHitTree.get("all"));
+                    oHitDetails.put("hitT", oHitTree.get("hit"));
                     break;
                   default:
                     break;
