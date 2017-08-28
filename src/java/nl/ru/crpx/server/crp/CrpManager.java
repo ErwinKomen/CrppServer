@@ -874,6 +874,7 @@ public class CrpManager {
     String sFileName = "";        // The xml FILE containing the text
     String sFileJson = "";        // THe zipped json file containing the surface text
     String sExtJsonZip = ".json.gz";
+    boolean bDebug = false;       // Debugging flag
     JSONObject oText = null;      // JSON representation of what we return
     DataObjectMapElement oBack = new DataObjectMapElement();
     
@@ -910,6 +911,10 @@ public class CrpManager {
       // Get a Parse object
       Parse prsThis = new Parse(crpThis, this.errHandle);
       
+      // ================= DEBUG ==
+      if (bDebug) this.errHandle.debug("crpManager/getText: before getting the path");
+      // ==========================
+      
       // Get the directory from where to search
       Path pRoot = Paths.get(FileUtil.nameNormalize(sCorpusBase), sLng);
       // If [part] is specified, then we need to get a sub directory
@@ -925,19 +930,31 @@ public class CrpManager {
         return DataObject.errorObject("INTERNAL_ERROR", 
                 "/txt - getText: cannot find text in ["+sFileName+"]");
       }
+      // ================= DEBUG ==
+      if (bDebug) this.errHandle.debug("crpManager/getText: found path: "+pFile.toString());
+      // ==========================
       if (!pJson.toString().isEmpty() && Files.exists(pJson)) {
         // THere is a zipped JSON file: read and unzip it
         oText = new JSONObject(FileUtil.decompressGzipString(pJson.toString()));
       } else {
         // Create the correct path for the JSON
         pJson = Paths.get(pFile.toAbsolutePath().toString().replace(sExtFind, sExtJsonZip));
+        // ================= DEBUG ==
+        if (bDebug) this.errHandle.debug("crpManager/getText: start making JSON at: "+pJson.toString());
+        // ==========================
         // TODO: create the [oText]
         oText  = prsThis.getSurfaceText(pFile.toAbsolutePath().toString(), iStart, iPageSize);
         // Save the oText compressed
         if (oText != null) {
+          // ================= DEBUG ==
+          if (bDebug) this.errHandle.debug("crpManager/getText: compressing text to JSON at: "+pJson.toString());
+          // ==========================
           FileUtil.compressGzipString(oText.toString(2), pJson.toAbsolutePath().toString());
         }
       }
+      // ================= DEBUG ==
+      if (bDebug) this.errHandle.debug("crpManager/getText: continuing...");
+      // ==========================
       
       // TODO: Convert the JSON object into a dataobject
       if (oText != null && oText.has("count") && oText.has("line")) {
@@ -957,6 +974,9 @@ public class CrpManager {
         // Add the d-o-list to what we return
         oBack.put("line", doLine);
       }
+      // ================= DEBUG ==
+      this.errHandle.debug("crpManager/getText: returning...");
+      // ==========================
  
       
       // Return the back object
