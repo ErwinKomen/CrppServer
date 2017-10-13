@@ -190,6 +190,9 @@ public class CrpManager {
     }
   }
   
+  public ErrHandle getErr() {
+    return errHandle;
+  }
   /**
    * createCrp
    *    Create a CRP with the indicated name for the indicated user

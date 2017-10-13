@@ -58,7 +58,9 @@ public class RequestHandlerLoad extends RequestHandler {
         String sMsg;
         if (errHandle.hasErr())
           sMsg = "Errors: " + errHandle.getErrList().toString();
-        else
+        else if (crpManager.getErr().hasErr()) {
+          sMsg = "Errors: " + crpManager.getErr().getErrList().toString();
+        } else
           sMsg = "Could not initialize project [" + sCrpName + "] for user [" +
                   sCurrentUserId + "]";
         return DataObject.errorObject("INTERNAL_ERROR", sMsg);
