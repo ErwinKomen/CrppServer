@@ -370,6 +370,10 @@ public abstract class RequestHandler {
         sJsonPart = oReq.toString();
       }
       
+      // Post-fixing: translate "True" and "False"
+      sJsonPart = sJsonPart.replace("\"True\"", "true");
+      sJsonPart = sJsonPart.replace("\"False\"", "false");
+      
       // Return the JSON query part
       return sJsonPart;
     } catch (Exception ex) {
