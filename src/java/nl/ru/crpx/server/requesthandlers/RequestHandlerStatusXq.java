@@ -89,9 +89,11 @@ public class RequestHandlerStatusXq  extends RequestHandler {
         int iStatusCount = oProg.has("count") ? oProg.getInt("count") : 0;
         int iStatusTotal = oProg.has("total") ? oProg.getInt("total") : 0;
         int iStatusReady = oProg.has("ready") ? oProg.getInt("ready") : 0;
+        int iStatusFound = oProg.has("found") ? oProg.getInt("found") : 0;
         objContent.put("count", iStatusCount);       // Number of files that have started
         objContent.put("total", iStatusTotal);       // Total number of files to be done
         objContent.put("ready", iStatusReady);       // Number of files ready
+        objContent.put("found", iStatusFound);       // Number of hits total found
       }
       
     
