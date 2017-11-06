@@ -13,7 +13,6 @@
 package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
-import java.util.Iterator;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import net.sf.saxon.s9api.DocumentBuilder;
@@ -37,7 +36,6 @@ import nl.ru.xmltools.XmlDocument;
 import nl.ru.xmltools.XmlIndexTgReader;
 import nl.ru.xmltools.XmlNode;
 import nl.ru.xmltools.XmlResultDbase;
-import nl.ru.xmltools.XmlResultPsdxIndex;
 import org.apache.log4j.Logger;
 
 /**
