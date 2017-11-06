@@ -330,10 +330,12 @@ public class RequestHandlerDbInfo extends RequestHandler {
     
     try {
       
-      // Construct the target file name
-      String sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sFile);
-      
-      if (!this.sCurrentFile.equals(sOneSrcFilePart)) {
+      if (!this.sCurrentFile.equals(sFile)) {
+        this.sCurrentFile = sFile;
+        
+        // Construct the target file name
+        String sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sFile);
+
         // Get a handle to this file
         switch (crpThis.intProjType) {
           case ProjPsdx:
