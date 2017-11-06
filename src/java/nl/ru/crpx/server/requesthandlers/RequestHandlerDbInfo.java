@@ -16,6 +16,8 @@ import java.io.File;
 import java.util.Iterator;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
+import net.sf.saxon.s9api.DocumentBuilder;
+import net.sf.saxon.s9api.Processor;
 import net.sf.saxon.s9api.QName;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
@@ -25,8 +27,13 @@ import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.crpx.xq.Extensions;
 import nl.ru.util.ByRef;
+import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
+import nl.ru.xmltools.XmlAccess;
+import nl.ru.xmltools.XmlAccessFolia;
+import nl.ru.xmltools.XmlAccessPsdx;
+import nl.ru.xmltools.XmlDocument;
 import nl.ru.xmltools.XmlIndexTgReader;
 import nl.ru.xmltools.XmlNode;
 import nl.ru.xmltools.XmlResultDbase;
@@ -53,10 +60,19 @@ public class RequestHandlerDbInfo extends RequestHandler {
   private static final Logger logger = Logger.getLogger(RequestHandlerDbInfo.class);
   // =================== Local variables =======================================
   private CrpManager crpManager;
+  private Processor objSaxon;               // Local access to the processor
+  private DocumentBuilder objSaxDoc;        // My own document-builder
   private XmlIndexTgReader objXmlRdr=null;    // Index reader for current file
+  private XmlDocument pdxThis = null;
+  private XmlAccess objXmlAcc;              // XML access to the file(chunk) we are working with
   private File objCurrentFile = null;       // File we are working on now
-  private String loc_xpWords = "";          // Xpath expression to get to the words
   private Extensions ruExt = null;          // To make sure Extension functions work
+  private String loc_xpWords = "";          // Xpath expression to get to the words
+  private String sCrpLngDir = "";
+  private String sLngName = "";
+  private String sCurrentFile = "";         // Current file we are working on
+  private CorpusResearchProject.ProjType iPrjType;  // Type of current project (psdx/folia...)
+  private CorpusResearchProject crpThis = null;
   private static final QName loc_attr_LeafText = new QName("", "", "Text");
 
   // =================== Initialisation of this class ==========================
@@ -114,7 +130,11 @@ public class RequestHandlerDbInfo extends RequestHandler {
       DataObjectMapElement objContent = new DataObjectMapElement();
       
       // The general information of the database must be added at any rate (no matter the value of iUpdStart)
-      objContent.put("General", getGeneralPart(oDbIndex));
+      DataObjectMapElement objGeneral = (DataObjectMapElement) getGeneralPart(oDbIndex);
+      objContent.put("General", objGeneral);
+      
+      // Prepare getting KIWC results
+      this.kwicPrepare(oDbIndex);
       
       // Start an array with the required results
       DataObjectList arHitDetails = new DataObjectList("results");
@@ -132,6 +152,10 @@ public class RequestHandlerDbInfo extends RequestHandler {
           // Get this one result
           JSONObject oResSource = arResults.argValue.getJSONObject(i);
           DataObjectMapElement oResTarget = new DataObjectMapElement();
+          // Extract essential parameters
+          String sFile = oResSource.getString("File");
+          String sLocs = oResSource.getString("Locs");
+          String sLocw = oResSource.getString("Locw");
           // COpy the 'standard' ones to the target
           oResTarget.put("ResId", oResSource.getInt("ResId"));
           oResTarget.put("File", oResSource.getString("File"));
@@ -155,19 +179,12 @@ public class RequestHandlerDbInfo extends RequestHandler {
             arFeatDst.add(oFeatDst);
           }
           oResTarget.put("Features", arFeatDst);
-          
-          /* --- OLD
-          // Copy all elements from the source to the target
-          Iterator keys = oResSource.keys();
-          while (keys.hasNext()) {
-            String sKey = keys.next().toString();
-            if (sKey.equals("ResId")) {
-              oResTarget.put(sKey, oResSource.getInt(sKey));
-            } else {
-              oResTarget.put(sKey, oResSource.getString(sKey));
-            }
-          }
-           --------- */
+          // Calculate and copy the Kwic for this hit
+          JSONObject oKwicInfo = getResultKwic(sFile, sLocs, sLocw);
+          // Add the KWIC info to the result
+          oResTarget.put("kwic_pre", oKwicInfo.getString("preC"));
+          oResTarget.put("kwic_hit", oKwicInfo.getString("hitC"));
+          oResTarget.put("kwic_fol", oKwicInfo.getString("folC"));
           
           // Add to the array of hits
           arHitDetails.add(oResTarget); 
@@ -252,6 +269,98 @@ public class RequestHandlerDbInfo extends RequestHandler {
       return oGeneral;
     } catch (Exception ex) {
       errHandle.DoError("RequestHandlerDbInfo/getGeneralPart", ex, RequestHandlerDbInfo.class);
+      return null;
+    }
+  }
+  
+  /**
+   * kwicPrepare
+   *    Prepare getting Kwic results
+   * 
+   * @param oDbIndex
+   * @return 
+   */
+  public boolean kwicPrepare(XmlResultDbase oDbIndex) {
+    JSONObject oHdr = null;
+    
+    try {
+      // Get the header
+      oHdr = oDbIndex.headerInfo();
+      // Get the directory where corpus files must be found
+      String sLngPart = oHdr.getString("Part");
+      this.sLngName = oHdr.getString("Language");
+      this.sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
+      
+      // Get access to the indicated CRP
+      String sCrpName = oHdr.getString("ProjectName");
+      this.crpThis = crpManager.getCrp(sCrpName, sCurrentUserId);
+      
+      // Validate
+      if (this.crpThis == null) return false;
+      
+      // Keep the project type
+      this.iPrjType = crpThis.intProjType;
+      
+      // Get Access to Saxon
+      this.objSaxon = crpThis.getSaxProc();
+      this.objSaxDoc = this.objSaxon.newDocumentBuilder();
+      // Initialize access to ANY document associated with this CRP
+      this.pdxThis = new XmlDocument(this.objSaxDoc, this.objSaxon);
+      
+      
+      // Return success
+      return true;
+    } catch (Exception ex) {
+      errHandle.DoError("RequestHandlerDbInfo/kwicPrepare", ex, RequestHandlerDbInfo.class);
+      return false;
+    }
+  }
+  
+  /**
+   * getResultKwic
+   *    Get KWIC information around file/locs/locw
+   * 
+   * @param sFile       - Name of this file
+   * @param sLocs       - Sentence identifier
+   * @param sLocw       - Identifier of constituent within sentence
+   * @return 
+   */
+  public JSONObject getResultKwic(String sFile, String sLocs, String sLocw) {
+    JSONObject oBack = new JSONObject();
+    
+    try {
+      
+      // Construct the target file name
+      String sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sFile);
+      
+      if (!this.sCurrentFile.equals(sOneSrcFilePart)) {
+        // Get a handle to this file
+        switch (crpThis.intProjType) {
+          case ProjPsdx:
+           objXmlAcc = new XmlAccessPsdx(crpThis, pdxThis, sOneSrcFilePart); break;
+          case ProjFolia:
+           objXmlAcc = new XmlAccessFolia(crpThis, pdxThis, sOneSrcFilePart); break;              
+          case ProjAlp:
+            break;
+          case ProjNegra:
+            break;
+          default:
+            break;
+        }
+      }
+
+      // Validate
+      if (objXmlAcc == null) return null;
+      // Per hit the contexts: pre // clause // post
+      JSONObject oHitInfo = objXmlAcc.getHitLine(sLngName, sLocs, sLocw);
+      oBack.put("preC", oHitInfo.getString("pre"));
+      oBack.put("hitC", oHitInfo.getString("hit"));
+      oBack.put("folC", oHitInfo.getString("fol"));            
+      
+      // Return the object we created
+      return oBack;
+    } catch (Exception ex) {
+      errHandle.DoError("RequestHandlerDbInfo/getResultKwic", ex, RequestHandlerDbInfo.class);
       return null;
     }
   }
