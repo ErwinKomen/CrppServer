@@ -158,15 +158,19 @@ public class RequestHandlerDbInfo extends RequestHandler {
           oResTarget.put("ResId", oResSource.getInt("ResId"));
           oResTarget.put("File", oResSource.getString("File"));
           oResTarget.put("TextId", oResSource.getString("TextId"));
-          oResTarget.put("Search", oResSource.getString("Search"));
+          oResTarget.put("Date", oResSource.getString("Date"));
           oResTarget.put("Cat", oResSource.getString("Cat"));
           oResTarget.put("Locs", oResSource.getString("Locs"));
           oResTarget.put("Locw", oResSource.getString("Locw"));
-          oResTarget.put("Notes", oResSource.getString("Notes"));
           oResTarget.put("SubType", oResSource.getString("SubType"));
-          oResTarget.put("Text", oResSource.getString("Text"));
-          oResTarget.put("Psd", oResSource.getString("Psd"));
-          oResTarget.put("Pde", oResSource.getString("Pde"));          
+          oResTarget.put("Title", oResSource.getString("Title"));
+          oResTarget.put("Genre", oResSource.getString("Genre"));
+          oResTarget.put("Author", oResSource.getString("Author"));
+          oResTarget.put("Date", oResSource.getString("Date"));          
+          // Add the KWIC info to the result
+          oResTarget.put("kwic_pre", oResSource.getString("Pre"));
+          oResTarget.put("kwic_hit", oResSource.getString("Hit"));
+          oResTarget.put("kwic_fol", oResSource.getString("Fol"));
           // COpy the features to the target
           DataObjectList arFeatDst = new DataObjectList("features");
           JSONArray arFeatSrc = oResSource.getJSONArray("Features");
@@ -177,12 +181,13 @@ public class RequestHandlerDbInfo extends RequestHandler {
             arFeatDst.add(oFeatDst);
           }
           oResTarget.put("Features", arFeatDst);
+          /*
           // Calculate and copy the Kwic for this hit
           JSONObject oKwicInfo = getResultKwic(sFile, sLocs, sLocw);
           // Add the KWIC info to the result
           oResTarget.put("kwic_pre", oKwicInfo.getString("preC"));
           oResTarget.put("kwic_hit", oKwicInfo.getString("hitC"));
-          oResTarget.put("kwic_fol", oKwicInfo.getString("folC"));
+          oResTarget.put("kwic_fol", oKwicInfo.getString("folC"));*/
           
           // Add to the array of hits
           arHitDetails.add(oResTarget); 
