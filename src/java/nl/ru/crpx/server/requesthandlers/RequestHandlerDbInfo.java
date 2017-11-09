@@ -69,9 +69,13 @@ public class RequestHandlerDbInfo extends RequestHandler {
   private String sCrpLngDir = "";
   private String sLngName = "";
   private String sCurrentFile = "";         // Current file we are working on
+  private JSONObject oCurrentMetaInfo = null; // Metadata of the current file
   private CorpusResearchProject.ProjType iPrjType;  // Type of current project (psdx/folia...)
   private CorpusResearchProject crpThis = null;
+  // =================== Final Locals ==========================================
   private static final QName loc_attr_LeafText = new QName("", "", "Text");
+  private final String sKwicMethod = "calculate";
+  private final String sMetaMethod = "internal";
 
   // =================== Initialisation of this class ==========================
   public RequestHandlerDbInfo(CrpPserver servlet, HttpServletRequest request, String indexName) {
@@ -163,14 +167,41 @@ public class RequestHandlerDbInfo extends RequestHandler {
           oResTarget.put("Locs", oResSource.getString("Locs"));
           oResTarget.put("Locw", oResSource.getString("Locw"));
           oResTarget.put("SubType", oResSource.getString("SubType"));
-          oResTarget.put("Title", oResSource.getString("Title"));
-          oResTarget.put("Genre", oResSource.getString("Genre"));
-          oResTarget.put("Author", oResSource.getString("Author"));
-          oResTarget.put("Date", oResSource.getString("Date"));          
-          // Add the KWIC info to the result
-          oResTarget.put("kwic_pre", oResSource.getString("Pre"));
-          oResTarget.put("kwic_hit", oResSource.getString("Hit"));
-          oResTarget.put("kwic_fol", oResSource.getString("Fol"));
+          // Add metadata
+          switch (sMetaMethod) {
+            case "internal":
+              oResTarget.put("Title", oResSource.getString("Title"));
+              oResTarget.put("Genre", oResSource.getString("Genre"));
+              oResTarget.put("Author", oResSource.getString("Author"));
+              oResTarget.put("Date", oResSource.getString("Date"));          
+              break;
+            case "calculate":
+              // Calculate the meta information for this hit
+              JSONObject oMetaInfo = getResultMeta(sFile);
+              // Add the meta information to the result
+              oResTarget.put("Title", oMetaInfo.getString("Title"));
+              oResTarget.put("Genre", oMetaInfo.getString("Genre"));
+              oResTarget.put("Author", oMetaInfo.getString("Author"));
+              oResTarget.put("Date", oMetaInfo.getString("Date"));          
+              break;
+          }
+          // Add sentence-context information
+          switch (sKwicMethod) {
+            case "calculate":
+              // Calculate and copy the Kwic for this hit
+              JSONObject oKwicInfo = getResultKwic(sFile, sLocs, sLocw);
+              // Add the KWIC info to the result
+              oResTarget.put("kwic_pre", oKwicInfo.getString("preC"));
+              oResTarget.put("kwic_hit", oKwicInfo.getString("hitC"));
+              oResTarget.put("kwic_fol", oKwicInfo.getString("folC"));
+              break;
+            case "internal":
+              // Add the KWIC info to the result
+              oResTarget.put("kwic_pre", oResSource.getString("Pre"));
+              oResTarget.put("kwic_hit", oResSource.getString("Hit"));
+              oResTarget.put("kwic_fol", oResSource.getString("Fol"));
+              break;
+          }
           // COpy the features to the target
           DataObjectList arFeatDst = new DataObjectList("features");
           JSONArray arFeatSrc = oResSource.getJSONArray("Features");
@@ -181,13 +212,6 @@ public class RequestHandlerDbInfo extends RequestHandler {
             arFeatDst.add(oFeatDst);
           }
           oResTarget.put("Features", arFeatDst);
-          /*
-          // Calculate and copy the Kwic for this hit
-          JSONObject oKwicInfo = getResultKwic(sFile, sLocs, sLocw);
-          // Add the KWIC info to the result
-          oResTarget.put("kwic_pre", oKwicInfo.getString("preC"));
-          oResTarget.put("kwic_hit", oKwicInfo.getString("hitC"));
-          oResTarget.put("kwic_fol", oKwicInfo.getString("folC"));*/
           
           // Add to the array of hits
           arHitDetails.add(oResTarget); 
@@ -320,19 +344,14 @@ public class RequestHandlerDbInfo extends RequestHandler {
   }
   
   /**
-   * getResultKwic
-   *    Get KWIC information around file/locs/locw
+   * getTextAccess
+   *    Retrive an XmlAccess handle to the indicated text file
    * 
-   * @param sFile       - Name of this file
-   * @param sLocs       - Sentence identifier
-   * @param sLocw       - Identifier of constituent within sentence
+   * @param sFile
    * @return 
    */
-  public JSONObject getResultKwic(String sFile, String sLocs, String sLocw) {
-    JSONObject oBack = new JSONObject();
-    
+  private XmlAccess getTextAccess(String sFile) {
     try {
-      
       if (!this.sCurrentFile.equals(sFile)) {
         this.sCurrentFile = sFile;
         
@@ -353,6 +372,67 @@ public class RequestHandlerDbInfo extends RequestHandler {
             break;
         }
       }
+      
+      // Return the object we created
+      return objXmlAcc;
+    } catch (Exception ex) {
+      errHandle.DoError("RequestHandlerDbInfo/getTextAccess", ex, RequestHandlerDbInfo.class);
+      return null;
+    }
+  }
+  
+  /**
+   * getResultMeta
+   *    Retrieve the metadata for this file
+   * 
+   * @param sFile
+   * @return 
+   */
+  private JSONObject getResultMeta(String sFile) {
+    JSONObject oBack = new JSONObject();
+    JSONObject oMetaInfo = null;
+    
+    try {
+      // Has the file changed?
+      if (!this.sCurrentFile.equals(sFile)) {
+        oMetaInfo = this.oCurrentMetaInfo;
+      } else {
+        // Get to the file
+        objXmlAcc = this.getTextAccess(sFile);
+
+        // Validate
+        if (objXmlAcc == null) return null;
+
+        // Get the metadata for this file
+        oMetaInfo = objXmlAcc.getMetaInfo();
+      }
+      oBack.put("Title", oMetaInfo.getString("Title"));
+      oBack.put("Genre", oMetaInfo.getString("Genre"));
+      oBack.put("Author", oMetaInfo.getString("Author"));            
+      oBack.put("Date", oMetaInfo.getString("Date"));            
+      
+      // Return the object we created
+      return oBack;
+    } catch (Exception ex) {
+      errHandle.DoError("RequestHandlerDbInfo/getResultMeta", ex, RequestHandlerDbInfo.class);
+      return null;
+    }
+  }
+  /**
+   * getResultKwic
+   *    Get KWIC information around file/locs/locw
+   * 
+   * @param sFile       - Name of this file
+   * @param sLocs       - Sentence identifier
+   * @param sLocw       - Identifier of constituent within sentence
+   * @return 
+   */
+  public JSONObject getResultKwic(String sFile, String sLocs, String sLocw) {
+    JSONObject oBack = new JSONObject();
+    
+    try {
+      // Get to the file
+      objXmlAcc = this.getTextAccess(sFile);
 
       // Validate
       if (objXmlAcc == null) return null;
@@ -361,7 +441,6 @@ public class RequestHandlerDbInfo extends RequestHandler {
       oBack.put("preC", oHitInfo.getString("pre"));
       oBack.put("hitC", oHitInfo.getString("hit"));
       oBack.put("folC", oHitInfo.getString("fol"));            
-      
       // Return the object we created
       return oBack;
     } catch (Exception ex) {
