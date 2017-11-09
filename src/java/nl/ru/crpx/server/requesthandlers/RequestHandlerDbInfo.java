@@ -68,14 +68,18 @@ public class RequestHandlerDbInfo extends RequestHandler {
   private String loc_xpWords = "";          // Xpath expression to get to the words
   private String sCrpLngDir = "";
   private String sLngName = "";
+  private String sLngPart = "";
   private String sCurrentFile = "";         // Current file we are working on
+  private long startTime = 0;
+  private long tmeMeta = 0;                 // Time to do meta information
+  private long tmeKwic = 0;                 // Time to get KWIC information
   private JSONObject oCurrentMetaInfo = null; // Metadata of the current file
   private CorpusResearchProject.ProjType iPrjType;  // Type of current project (psdx/folia...)
   private CorpusResearchProject crpThis = null;
   // =================== Final Locals ==========================================
   private static final QName loc_attr_LeafText = new QName("", "", "Text");
   private final String sKwicMethod = "calculate";
-  private final String sMetaMethod = "internal";
+  private final String sMetaMethod = "calculate";
 
   // =================== Initialisation of this class ==========================
   public RequestHandlerDbInfo(CrpPserver servlet, HttpServletRequest request, String indexName) {
@@ -158,6 +162,7 @@ public class RequestHandlerDbInfo extends RequestHandler {
           String sFile = oResSource.getString("File");
           String sLocs = oResSource.getString("Locs");
           String sLocw = oResSource.getString("Locw");
+          String sSubTypeResult = oResSource.getString("SubType");
           // COpy the 'standard' ones to the target
           oResTarget.put("File", sFile);
           oResTarget.put("Locs", sLocs);
@@ -165,7 +170,7 @@ public class RequestHandlerDbInfo extends RequestHandler {
           oResTarget.put("ResId", oResSource.getInt("ResId"));
           oResTarget.put("TextId", oResSource.getString("TextId"));
           oResTarget.put("Cat", oResSource.getString("Cat"));
-          oResTarget.put("SubType", oResSource.getString("SubType"));
+          oResTarget.put("SubType", sSubTypeResult);
           // Add metadata
           switch (sMetaMethod) {
             case "internal":
@@ -175,24 +180,43 @@ public class RequestHandlerDbInfo extends RequestHandler {
               oResTarget.put("Date", oResSource.getString("Date"));          
               break;
             case "calculate":
+              startTime = System.nanoTime();
               // Calculate the meta information for this hit
-              JSONObject oMetaInfo = getResultMeta(sFile);
-              // Add the meta information to the result
-              oResTarget.put("Title", oMetaInfo.getString("Title"));
-              oResTarget.put("Genre", oMetaInfo.getString("Genre"));
-              oResTarget.put("Author", oMetaInfo.getString("Author"));
-              oResTarget.put("Date", oMetaInfo.getString("Date"));          
+              JSONObject oMetaInfo = getResultMeta(sLngName, sLngPart, sFile);
+              this.tmeMeta += System.nanoTime() - startTime;
+              if (oMetaInfo == null) {
+                // Add the meta information to the result
+                oResTarget.put("Title", "");
+                oResTarget.put("Genre", "");
+                oResTarget.put("Author", "");
+                oResTarget.put("Date", "");          
+                oResTarget.put("Size", 0);          
+              } else {
+                // Add the meta information to the result
+                oResTarget.put("Title", oMetaInfo.getString("Title"));
+                oResTarget.put("Genre", oMetaInfo.getString("Genre"));
+                oResTarget.put("Author", oMetaInfo.getString("Author"));
+                oResTarget.put("Date", oMetaInfo.getString("Date"));
+                oResTarget.put("Size", oMetaInfo.getInt("Size"));
+                // Possibly add better subtype
+                String sSubTypeMeta = oMetaInfo.getString("SubType");
+                if (sSubTypeResult.isEmpty() && !sSubTypeMeta.isEmpty()) {
+                  oResTarget.put("SubType", sSubTypeMeta);
+                }
+              }
               break;
           }
           // Add sentence-context information
           switch (sKwicMethod) {
             case "calculate":
+              startTime = System.nanoTime();
               // Calculate and copy the Kwic for this hit
               JSONObject oKwicInfo = getResultKwic(sFile, sLocs, sLocw);
+              this.tmeKwic += System.nanoTime() - startTime;
               // Add the KWIC info to the result
-              oResTarget.put("kwic_pre", oKwicInfo.getString("preC"));
-              oResTarget.put("kwic_hit", oKwicInfo.getString("hitC"));
-              oResTarget.put("kwic_fol", oKwicInfo.getString("folC"));
+              oResTarget.put("kwic_pre", oKwicInfo.getString("pre"));
+              oResTarget.put("kwic_hit", oKwicInfo.getString("hit"));
+              oResTarget.put("kwic_fol", oKwicInfo.getString("fol"));
               break;
             case "internal":
               // Add the KWIC info to the result
@@ -229,6 +253,10 @@ public class RequestHandlerDbInfo extends RequestHandler {
       DataObjectList arFtNames = new DataObjectList("features");
       for (String sFtName : oDbIndex.featureList()) {arFtNames.add(sFtName);}
       objContent.put("Features", arFtNames);
+      
+      // ============= TIMING
+      objContent.put("TimeMeta", this.tmeMeta);
+      objContent.put("TimeKwic", this.tmeKwic);
       
       // Make sure the database connection is closed again
       oDbIndex.close();
@@ -313,7 +341,7 @@ public class RequestHandlerDbInfo extends RequestHandler {
       // Get the header
       oHdr = oDbIndex.headerInfo();
       // Get the directory where corpus files must be found
-      String sLngPart = oHdr.getString("Part");
+      this.sLngPart = oHdr.getString("Part");
       this.sLngName = oHdr.getString("Language");
       this.sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLngName, sLngPart);
       
@@ -384,25 +412,37 @@ public class RequestHandlerDbInfo extends RequestHandler {
    * getResultMeta
    *    Retrieve the metadata for this file
    * 
+   * @param sLng
+   * @param sPart
    * @param sFile
    * @return 
    */
-  private JSONObject getResultMeta(String sFile) {
+  private JSONObject getResultMeta(String sLng, String sPart, String sFile) {
     JSONObject oMetaInfo;
     JSONObject oBack = new JSONObject();
     
     try {
       // Has the file changed?
-      if (!this.sCurrentFile.equals(sFile)) {
+      if (this.sCurrentFile.equals(sFile)) {
         oMetaInfo = this.oCurrentMetaInfo;
       } else {
+        // Get the full path of the filename
+        String sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sFile);
         // Retrieve the metadata 
-        oMetaInfo = this.crpManager.getMetaInfo(sFile);
+        oMetaInfo = this.crpManager.getMetaInfo(sLng, sPart, sOneSrcFilePart);
+        this.oCurrentMetaInfo = oMetaInfo;
       }
-      oBack.put("Title", oMetaInfo.getString("Title"));
-      oBack.put("Genre", oMetaInfo.getString("Genre"));
-      oBack.put("Author", oMetaInfo.getString("Author"));            
-      oBack.put("Date", oMetaInfo.getString("Date"));            
+      if (oMetaInfo == null) {
+        // This text is not available
+        errHandle.DoError("getResultMeta: cannot find text: " + sFile);
+        return null;
+      }
+      oBack.put("Title", oMetaInfo.getString("title"));
+      oBack.put("Genre", oMetaInfo.getString("genre"));
+      oBack.put("Author", oMetaInfo.getString("author"));            
+      oBack.put("Date", oMetaInfo.getString("date"));            
+      oBack.put("SubType", oMetaInfo.getString("subtype"));            
+      oBack.put("Size", oMetaInfo.getInt("size"));            
       
       // Return the object we created
       return oBack;
@@ -421,8 +461,6 @@ public class RequestHandlerDbInfo extends RequestHandler {
    * @return 
    */
   public JSONObject getResultKwic(String sFile, String sLocs, String sLocw) {
-    JSONObject oBack = new JSONObject();
-    
     try {
       // Get to the file
       objXmlAcc = this.getTextAccess(sFile);
@@ -430,12 +468,7 @@ public class RequestHandlerDbInfo extends RequestHandler {
       // Validate
       if (objXmlAcc == null) return null;
       // Per hit the contexts: pre // clause // post
-      JSONObject oHitInfo = objXmlAcc.getHitLine(sLngName, sLocs, sLocw);
-      oBack.put("preC", oHitInfo.getString("pre"));
-      oBack.put("hitC", oHitInfo.getString("hit"));
-      oBack.put("folC", oHitInfo.getString("fol"));            
-      // Return the object we created
-      return oBack;
+      return objXmlAcc.getHitLine(sLngName, sLocs, sLocw);
     } catch (Exception ex) {
       errHandle.DoError("RequestHandlerDbInfo/getResultKwic", ex, RequestHandlerDbInfo.class);
       return null;
