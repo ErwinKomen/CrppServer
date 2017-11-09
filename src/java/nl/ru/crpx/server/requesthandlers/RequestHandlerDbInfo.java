@@ -97,6 +97,9 @@ public class RequestHandlerDbInfo extends RequestHandler {
       //   {  "userid": "erkomen",  // user
       //      "name": "bladi.xml",  // name of database
       //      "start": 20,          // index of first hit
+      //      "filter": {           // List of STRING filter expressions
+      //         "Title": "ab*",
+      //         "Genre": "c*" },
       //      "count": 50,          // number of hits (within the category)
       //      "sort": "-Cat",       // Column name that needs sorting + minus sign if descending order
       //   }
@@ -119,7 +122,9 @@ public class RequestHandlerDbInfo extends RequestHandler {
       
       // Deal with optional parameters
       String sSort = "";
-      if (jReq.has("sort")) sSort = jReq.getString("sort");
+      if (jReq.has("sort")) { sSort = jReq.getString("sort"); }
+      JSONObject oFilter = null;
+      if (jReq.has("filter")) { oFilter = jReq.getJSONObject("filter"); }
       
       // Gain access to the database through a reader
       CorpusResearchProject oCrpx = new CorpusResearchProject(true);
@@ -131,6 +136,9 @@ public class RequestHandlerDbInfo extends RequestHandler {
       
       // Possibly perform sorting
       oDbIndex.Sort(sSort);
+      
+      // Possibly perform filtering
+      oDbIndex.Filter(oFilter);
       
       // Start a content object
       DataObjectMapElement objContent = new DataObjectMapElement();
