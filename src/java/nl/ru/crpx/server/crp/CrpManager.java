@@ -859,16 +859,18 @@ public class CrpManager {
     }
   }
   
-  public JSONObject getMetaInfo(String sFile) {
+  public JSONObject getMetaInfo(String sLng, String sPart, String sFileName) {
     String sExtType = "";
+    String sFile = "";
+    boolean bCalcPath = false;
     
     try {
       // We need to have an (empty) corpus research project to continue...
       CorpusResearchProject crpThis = new CorpusResearchProject(true);
       // Determine the file extension
-      if (sFile.endsWith(".folia.xml")) {
+      if (sFileName.endsWith(".folia.xml")) {
         sExtType = "folia";
-      } else if (sFile.endsWith(".psdx")) {
+      } else if (sFileName.endsWith(".psdx")) {
         sExtType = "psdx";
       }
       // And the one thing that needs to be set in the project is the type
@@ -882,9 +884,32 @@ public class CrpManager {
           crpThis.setTextExt(ProjType.ProjFolia);
           break;
         default:
-        errHandle.DoError("getMetaInfo: unknown file extension in ["+sFile+"]");
+        errHandle.DoError("getMetaInfo: unknown file extension in ["+sFileName+"]");
           return null;
       }
+
+      if (bCalcPath) {
+        // Find out where the file is located
+        // Get the directory from where to search
+        Path pRoot = Paths.get(FileUtil.nameNormalize(sCorpusBase), sLng);
+        // If [part] is specified, then we need to get a sub directory
+        if (!sPart.isEmpty()) {
+          // Find the first sub directory containing [sPart] under [pRoot]
+          pRoot =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sPart));
+        }
+        // And then WITHIN this path, we need to get the specified file name
+        Path pFile =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileName));
+        sFile = pFile.toString();
+
+        // Validate what gets returned
+        if (sFile.isEmpty() || !Files.exists(pFile)) {
+          errHandle.DoError("getMetaInfo: cannot find text in ["+sFileName+"]");
+          return null;
+        }        
+      } else {
+        sFile = sFileName;
+      }
+      
       // Get a Parse object
       Parse prsThis = new Parse(crpThis, this.errHandle);
       JSONObject oMetaInfo = prsThis.getMetaInfo(sFile);
