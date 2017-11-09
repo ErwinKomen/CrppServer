@@ -159,13 +159,12 @@ public class RequestHandlerDbInfo extends RequestHandler {
           String sLocs = oResSource.getString("Locs");
           String sLocw = oResSource.getString("Locw");
           // COpy the 'standard' ones to the target
+          oResTarget.put("File", sFile);
+          oResTarget.put("Locs", sLocs);
+          oResTarget.put("Locw", sLocw);
           oResTarget.put("ResId", oResSource.getInt("ResId"));
-          oResTarget.put("File", oResSource.getString("File"));
           oResTarget.put("TextId", oResSource.getString("TextId"));
-          oResTarget.put("Date", oResSource.getString("Date"));
           oResTarget.put("Cat", oResSource.getString("Cat"));
-          oResTarget.put("Locs", oResSource.getString("Locs"));
-          oResTarget.put("Locw", oResSource.getString("Locw"));
           oResTarget.put("SubType", oResSource.getString("SubType"));
           // Add metadata
           switch (sMetaMethod) {
@@ -389,22 +388,16 @@ public class RequestHandlerDbInfo extends RequestHandler {
    * @return 
    */
   private JSONObject getResultMeta(String sFile) {
+    JSONObject oMetaInfo;
     JSONObject oBack = new JSONObject();
-    JSONObject oMetaInfo = null;
     
     try {
       // Has the file changed?
       if (!this.sCurrentFile.equals(sFile)) {
         oMetaInfo = this.oCurrentMetaInfo;
       } else {
-        // Get to the file
-        objXmlAcc = this.getTextAccess(sFile);
-
-        // Validate
-        if (objXmlAcc == null) return null;
-
-        // Get the metadata for this file
-        oMetaInfo = objXmlAcc.getMetaInfo();
+        // Retrieve the metadata 
+        oMetaInfo = this.crpManager.getMetaInfo(sFile);
       }
       oBack.put("Title", oMetaInfo.getString("Title"));
       oBack.put("Genre", oMetaInfo.getString("Genre"));

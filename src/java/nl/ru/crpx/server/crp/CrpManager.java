@@ -858,6 +858,42 @@ public class CrpManager {
               "/txt - getText error: ["+ex.getMessage()+"]");
     }
   }
+  
+  public JSONObject getMetaInfo(String sFile) {
+    String sExtType = "";
+    
+    try {
+      // We need to have an (empty) corpus research project to continue...
+      CorpusResearchProject crpThis = new CorpusResearchProject(true);
+      // Determine the file extension
+      if (sFile.endsWith(".folia.xml")) {
+        sExtType = "folia";
+      } else if (sFile.endsWith(".psdx")) {
+        sExtType = "psdx";
+      }
+      // And the one thing that needs to be set in the project is the type
+      switch (sExtType) {
+        case "psdx":
+          crpThis.setForType(XmlForest.ForType.PsdxIndex);
+          crpThis.setTextExt(ProjType.ProjPsdx);
+          break;
+        case "folia":
+          crpThis.setForType(XmlForest.ForType.FoliaIndex);
+          crpThis.setTextExt(ProjType.ProjFolia);
+          break;
+        default:
+        errHandle.DoError("getMetaInfo: unknown file extension in ["+sFile+"]");
+          return null;
+      }
+      // Get a Parse object
+      Parse prsThis = new Parse(crpThis, this.errHandle);
+      JSONObject oMetaInfo = prsThis.getMetaInfo(sFile);
+      return oMetaInfo;
+    } catch (Exception ex) {
+      errHandle.DoError("getMetaInfo", ex, CrpManager.class);
+      return null;
+    }
+  }
 
   /**
    * getText
