@@ -79,7 +79,7 @@ public class RequestHandlerDbInfo extends RequestHandler {
   // =================== Final Locals ==========================================
   private static final QName loc_attr_LeafText = new QName("", "", "Text");
   private final String sKwicMethod = "calculate";
-  private final String sMetaMethod = "calculate";
+  private final String sMetaMethod = "dbase";
 
   // =================== Initialisation of this class ==========================
   public RequestHandlerDbInfo(CrpPserver servlet, HttpServletRequest request, String indexName) {
@@ -186,6 +186,13 @@ public class RequestHandlerDbInfo extends RequestHandler {
               oResTarget.put("Genre", oResSource.getString("Genre"));
               oResTarget.put("Author", oResSource.getString("Author"));
               oResTarget.put("Date", oResSource.getString("Date"));          
+              break;
+            case "dbase": // Meta information is in the database
+              oResTarget.put("Title", oResSource.getString("Title"));
+              oResTarget.put("Genre", oResSource.getString("Genre"));
+              oResTarget.put("Author", oResSource.getString("Author"));
+              oResTarget.put("Date", oResSource.getString("Date"));          
+              oResTarget.put("Size", oResSource.getInt("Size"));          
               break;
             case "calculate":
               startTime = System.nanoTime();
