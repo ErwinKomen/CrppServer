@@ -12,6 +12,7 @@
  */
 package nl.ru.crpx.server.requesthandlers;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
@@ -360,14 +361,32 @@ public abstract class RequestHandler {
     String sJsonPart = "";
     
     try {
-      // Read the request and divide it into key-value pairs
-      oReq = getReqObject(request);
-      // Check for "query"
-      if (oReq.has("query")) {
-        // sJsonPart = oReq.getJSONObject("query").toString();
-        sJsonPart = oReq.getString("query");
+      // Check if this is a json
+      String sContentType = request.getHeader("content-type");
+      if (sContentType != null && sContentType.equals("application/json")) {
+        // Read the request as a string
+        StringBuilder jb = new StringBuilder();
+        String line = null;
+        try {
+          BufferedReader reader = request.getReader();
+          while ( (line=reader.readLine()) != null) {
+            jb.append(line);
+          }
+        } catch (Exception e) {
+          
+        }
+        sJsonPart = jb.toString();
       } else {
-        sJsonPart = oReq.toString();
+      
+        // Read the request and divide it into key-value pairs
+        oReq = getReqObject(request);
+        // Check for "query"
+        if (oReq.has("query")) {
+          // sJsonPart = oReq.getJSONObject("query").toString();
+          sJsonPart = oReq.getString("query");
+        } else {
+          sJsonPart = oReq.toString();
+        }
       }
       
       // Post-fixing: translate "True" and "False"
@@ -399,7 +418,7 @@ public abstract class RequestHandler {
       // errHandle.debug("getReqObject #1: ["+ sQueryIdArg + "]");
       if (sQueryIdArg == null || sQueryIdArg.isEmpty()) {
         // Perhaps this is a POST request? Try to get POST parameter
-        sQueryIdArg = request.getParameter("args");    
+        sQueryIdArg = request.getParameter("args"); 
         sMethod = "POST";
       } else if (sQueryIdArg.startsWith("{")) {
         // It is GET, but it is a JSON string, URL-encoded - decode it
