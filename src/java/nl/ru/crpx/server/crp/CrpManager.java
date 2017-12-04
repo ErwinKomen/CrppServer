@@ -122,19 +122,32 @@ public class CrpManager {
    * @return 
    */
   public CrpUser getCrpUser(String sProjectName, String sUserId, String sAction) {
+    int iIndex = -1;  // Index where we find the object
+    
     try {
       // Make sure anything is set without the .crpx extension
       if (sProjectName.endsWith(".crpx")) sProjectName = sProjectName.replace(".crpx", "");
       // Check if this combination already exists in the list
-      for (CrpUser oCrpUser : loc_crpUserList) {
+      for (Iterator<CrpUser> iter = loc_crpUserList.listIterator(); iter.hasNext();) {
+        // for (CrpUser oCrpUser : loc_crpUserList) {
+        CrpUser oCrpUser = iter.next();
         // Check if this has the correct project name, language index and user id
         if (oCrpUser.prjName.equals(sProjectName) && oCrpUser.userId.equals(sUserId)) {
+          // Look at the action
+          if (sAction.equals("load-nocache")) {
+            // Remove the entry
+            iter.remove();
+            // Now exit the loop
+            break;
+          } else {
             errHandle.debug("getCrpUser - reusing: [" + sProjectName + 
                     ", " + sUserId + "]", CrpManager.class);
             // Return this object
             return oCrpUser;
           }
-        } 
+        }
+      } 
+      if (sAction.equals("load-nocache")) { sAction = "load"; }
       // Getting here means that we need to create a new entry
       CrpUser oNewCrpUser = new CrpUser(servlet, sProjectName, sAction, sUserId, errHandle);
       // Have we succeeded?
@@ -186,6 +199,27 @@ public class CrpManager {
         return oCrpUser.prjThis;
     } catch (Exception ex) {
       errHandle.DoError("Could not load or retrieve CRP", ex, CrpManager.class);
+      return null;
+    }
+  }
+  public CorpusResearchProject getCrpNoCache(String sProjectName, String sUserId,
+          ByRef<ErrHandle> oErr) {
+    try {
+      // Reset the errore handling
+      errHandle.clearErr();
+      // Link the error handle
+      oErr.argValue = errHandle;
+      // Validate existence
+      if (!this.existsCrp(sProjectName, sUserId)) return null;
+      // File must exist, so continue
+      CrpUser oCrpUser= getCrpUser(sProjectName, sUserId, "load-nocache");
+      // Check what we get back
+      if (oCrpUser == null)
+        return null;
+      else
+        return oCrpUser.prjThis;
+    } catch (Exception ex) {
+      errHandle.DoError("Could not load-no-cache the CRP", ex, CrpManager.class);
       return null;
     }
   }

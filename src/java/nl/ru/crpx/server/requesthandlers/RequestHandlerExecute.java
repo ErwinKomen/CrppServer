@@ -149,7 +149,11 @@ public class RequestHandlerExecute extends RequestHandler {
 
         // Get the CRP that is supposed to be executed (or load it if it is not loaded yet)
         ByRef<ErrHandle> errCrp = new ByRef(null);
-        prjThis = crpManager.getCrp(sCrpName, sCurrentUserId, errCrp);
+        if (bCache) {
+          prjThis = crpManager.getCrp(sCrpName, sCurrentUserId, errCrp);
+        } else {
+          prjThis = crpManager.getCrpNoCache(sCrpName, sCurrentUserId, errCrp);
+        }
         if (prjThis == null || errHandle.bInterrupt || errCrp.argValue.bInterrupt ||
                 errCrp.argValue.hasErr()) {
           String sMsg = "";
