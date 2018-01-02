@@ -51,11 +51,16 @@ public class RequestHandlerDbGet extends RequestHandler {
   
   @Override
   public DataObject handle() {
+    File fDbPath = null;
+    DataObjectMapElement objContent = new DataObjectMapElement();
+
     try {
       debug(logger, "REQ dbget");
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen" 
-      //      "name":   "ParticleA_dbase.xml" }
+      //      "name":   "ParticleA_dbase.xml" 
+      //      "type":   "xml"                   OR: "csv"
+      //    }
       // Note: if no user is given, then we should give all users and all crp's
       sReqArgument = getReqString(request);
       logger.debug("Considering request /dbget: " + sReqArgument);
@@ -64,13 +69,17 @@ public class RequestHandlerDbGet extends RequestHandler {
       
       // Validate the parameters
       if (!jReq.has("userid"))  return DataObject.errorObject("syntax", "The /dbget request must contain: userid.");
-      if (!jReq.has("name"))     return DataObject.errorObject("syntax", "The /dbget request must contain: name.");
+      if (!jReq.has("name"))    return DataObject.errorObject("syntax", "The /dbget request must contain: name.");
       
-      // Retrieve and process the parameters 
+      // Retrieve and process the obligatory parameters 
       sCurrentUserId = jReq.getString("userid");
       // Get the CRP NAME
       String sDbName = jReq.getString("name");
       if (!sDbName.endsWith(".xml")) sDbName += ".xml";
+      
+      // Process the optional TYPE parameter
+      String sGetType = "xml";
+      if (jReq.has("type")) { sGetType = jReq.getString("type");}
       
       // Get a list of all this user's CRPs satisfying the name condition
       DataObjectList arDbList = (DataObjectList) crpManager.getDbList( sCurrentUserId, sDbName);
@@ -81,13 +90,25 @@ public class RequestHandlerDbGet extends RequestHandler {
       // Locate the file
       JSONObject oFirst = new JSONObject(arDbList.get(0).toString(DataFormat.JSON));
       String sDbPath = oFirst.getString("file");
-      File fDbPath = new File(sDbPath);
-      if (!fDbPath.exists()) return DataObject.errorObject("not_found",
-              "Could not find the .xml file at: ["+sDbPath+"].");
+      // Possibly adapt for which file we are looking
+      switch(sGetType) {
+        case "csv":
+          sDbPath = sDbPath.replace(".xml", ".csv.gz");
+          fDbPath = new File(sDbPath);
+          if (!fDbPath.exists()) return DataObject.errorObject("not_found",
+                  "Could not find the .csv.gz file at: ["+sDbPath+"].");
+          // Load and prepare the content
+          objContent.put("db", StringUtil.compressSafe(FileUtil.decompressGzipString(sDbPath)));
+          break;
+        case "xml":
+          fDbPath = new File(sDbPath);
+          if (!fDbPath.exists()) return DataObject.errorObject("not_found",
+                  "Could not find the .xml file at: ["+sDbPath+"].");
+          // Load and prepare the content
+          objContent.put("db", StringUtil.compressSafe((new FileUtil()).readFile(fDbPath)));
+          break;
+      }
 
-      // Load and prepare the content
-      DataObjectMapElement objContent = new DataObjectMapElement();
-      objContent.put("db", StringUtil.compressSafe((new FileUtil()).readFile(fDbPath)));
       
       // Prepare a status object to return
       DataObjectMapElement objStatus = new DataObjectMapElement();
