@@ -13,6 +13,8 @@
 package nl.ru.crpx.server.requesthandlers;
 
 import java.io.File;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataFormat;
 import nl.ru.crpx.dataobject.DataObject;
@@ -59,7 +61,7 @@ public class RequestHandlerDbGet extends RequestHandler {
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen" 
       //      "name":   "ParticleA_dbase.xml" 
-      //      "type":   "xml"                   OR: "csv"
+      //      "type":   "xml"                   OR: "csv", "db"
       //    }
       // Note: if no user is given, then we should give all users and all crp's
       sReqArgument = getReqString(request);
@@ -106,6 +108,16 @@ public class RequestHandlerDbGet extends RequestHandler {
                   "Could not find the .xml file at: ["+sDbPath+"].");
           // Load and prepare the content
           objContent.put("db", StringUtil.compressSafe((new FileUtil()).readFile(fDbPath)));
+          break;
+        case "db":
+          sDbPath = sDbPath.replace(".xml", ".db.gz");
+          fDbPath = new File(sDbPath);
+          if (!fDbPath.exists()) return DataObject.errorObject("not_found",
+                  "Could not find the .db.gz file at: ["+sDbPath+"].");
+          // Read the binary file as a byte array
+          byte[] arBytes = Files.readAllBytes(fDbPath.toPath());
+          // Load and prepare the content
+          objContent.put("db", StringUtil.compressSafe(arBytes));
           break;
       }
 
