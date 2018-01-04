@@ -15,6 +15,7 @@ package nl.ru.crpx.server.requesthandlers;
 import java.io.File;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataFormat;
 import nl.ru.crpx.dataobject.DataObject;
@@ -54,13 +55,15 @@ public class RequestHandlerDbGet extends RequestHandler {
   @Override
   public DataObject handle() {
     File fDbPath = null;
+    String sPart = "";      // Optional corpus part (short subdirectory name)
     DataObjectMapElement objContent = new DataObjectMapElement();
 
     try {
       debug(logger, "REQ dbget");
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen" 
-      //      "name":   "ParticleA_dbase.xml"   NEW: should ideally also contain the `dir` of the corpus part
+      //      "name":   "ParticleA_dbase.xml"   
+      //      "part":   "lModE"                 OPTIONAL: the `dir` of the corpus part
       //      "type":   "xml"                   OR: "csv", "db"
       //    }
       // Note: if no user is given, then we should give all users and all crp's
@@ -82,6 +85,7 @@ public class RequestHandlerDbGet extends RequestHandler {
       // Process the optional TYPE parameter
       String sGetType = "xml";
       if (jReq.has("type")) { sGetType = jReq.getString("type");}
+      if (jReq.has("part")) { sPart = jReq.getString("part");}
       
       // Get a list of all this user's CRPs satisfying the name condition
       DataObjectList arDbList = (DataObjectList) crpManager.getDbList( sCurrentUserId, sDbName);
@@ -92,6 +96,12 @@ public class RequestHandlerDbGet extends RequestHandler {
       // Locate the file
       JSONObject oFirst = new JSONObject(arDbList.get(0).toString(DataFormat.JSON));
       String sDbPath = oFirst.getString("file");
+      // If a 'part' is specified, it should be included as well
+      if (!sPart.isEmpty()) {
+        // Reconstruct sDbPath to include the part
+        fDbPath = new File(sDbPath);
+        sDbPath = Paths.get(fDbPath.getParent(), sPart, fDbPath.getName()).toString();
+      }
       // Possibly adapt for which file we are looking
       switch(sGetType) {
         case "csv":
@@ -103,11 +113,23 @@ public class RequestHandlerDbGet extends RequestHandler {
           objContent.put("db", StringUtil.compressSafe(FileUtil.decompressGzipString(sDbPath)));
           break;
         case "xml":
-          fDbPath = new File(sDbPath);
-          if (!fDbPath.exists()) return DataObject.errorObject("not_found",
-                  "Could not find the .xml file at: ["+sDbPath+"].");
-          // Load and prepare the content
-          objContent.put("db", StringUtil.compressSafe((new FileUtil()).readFile(fDbPath)));
+          // if the 'part' is specified, we expect to find .xml.db
+          if (sPart.isEmpty()) {
+            fDbPath = new File(sDbPath);
+            if (!fDbPath.exists()) return DataObject.errorObject("not_found",
+                    "Could not find the .xml file at: ["+sDbPath+"].");
+            // Load and prepare the content
+            objContent.put("db", StringUtil.compressSafe((new FileUtil()).readFile(fDbPath)));
+          } else {
+            sDbPath = sDbPath.replace(".xml", ".xml.gz");
+            fDbPath = new File(sDbPath);
+            if (!fDbPath.exists()) return DataObject.errorObject("not_found",
+                    "Could not find the .db.gz file at: ["+sDbPath+"].");
+            // Read the binary file as a byte array
+            byte[] arBytes = Files.readAllBytes(fDbPath.toPath());
+            // Load and prepare the content
+            objContent.put("db", StringUtil.compressSafe(arBytes));
+          }
           break;
         case "db":
           sDbPath = sDbPath.replace(".xml", ".db.gz");
