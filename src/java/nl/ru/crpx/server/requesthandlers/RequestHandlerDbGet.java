@@ -60,7 +60,7 @@ public class RequestHandlerDbGet extends RequestHandler {
       debug(logger, "REQ dbget");
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen" 
-      //      "name":   "ParticleA_dbase.xml" 
+      //      "name":   "ParticleA_dbase.xml"   NEW: should ideally also contain the `dir` of the corpus part
       //      "type":   "xml"                   OR: "csv", "db"
       //    }
       // Note: if no user is given, then we should give all users and all crp's
