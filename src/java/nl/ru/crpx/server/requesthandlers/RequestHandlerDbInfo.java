@@ -90,12 +90,14 @@ public class RequestHandlerDbInfo extends RequestHandler {
   
   @Override
   public DataObject handle() {
+    String sPart = "";    // Optional part
     
     try {
       debug(logger, "REQ dbinfo");
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen",  // user
       //      "name": "bladi.xml",  // name of database
+      //      "part": "lModE",      // OPTIONAL: corpus part 
       //      "start": 20,          // index of first hit
       //      "filter": {           // List of STRING filter expressions
       //         "Title": "ab*",
@@ -125,12 +127,17 @@ public class RequestHandlerDbInfo extends RequestHandler {
       if (jReq.has("sort")) { sSort = jReq.getString("sort"); }
       JSONObject oFilter = null;
       if (jReq.has("filter")) { oFilter = jReq.getJSONObject("filter"); }
+      if (jReq.has("part")) {sPart = jReq.getString("part");}
       
       // Gain access to the database through a reader
       CorpusResearchProject oCrpx = new CorpusResearchProject(true);
       XmlResultDbase oDbIndex = new XmlResultDbase(oCrpx, null, errHandle);
       // XmlResultPsdxIndex oDbIndex = new XmlResultPsdxIndex(oCrpx, null, errHandle);
-      String sDbFile = "/etc/project/" + sCurrentUserId + "/dbase/" + sDbName;
+      String sDbFile = "/etc/project/" + sCurrentUserId + "/dbase/";
+      if (!sPart.isEmpty()) {
+        sDbFile += sPart + "/";
+      }
+      sDbFile += sDbName;
       if (!oDbIndex.Prepare(sDbFile)) return DataObject.errorObject("availability", 
               "The database with the indicated name cannot be loaded for this user");
       
