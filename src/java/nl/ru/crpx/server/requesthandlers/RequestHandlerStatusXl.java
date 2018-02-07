@@ -77,6 +77,8 @@ public class RequestHandlerStatusXl  extends RequestHandler {
         if (sJobStatus.equals("error")) {
           // Get the error message
           sResult = this.errorCollect(search);
+          // status
+          logger.debug("statusxl [error] "+sResult);
         } else {
           sResult = "The search has finished";
           objContent.put("searchParam", searchParam.toDataObject());
@@ -91,6 +93,8 @@ public class RequestHandlerStatusXl  extends RequestHandler {
             iTotal = oProg.getInt("total");
           }
           objContent.put("total", iTotal);       // Total number of files processed
+          // status
+          logger.debug("statusxl [finished] total="+iTotal);
         }
         // The job may be taken away
         workQueue.removeRun(search);
@@ -103,7 +107,9 @@ public class RequestHandlerStatusXl  extends RequestHandler {
           } else {
             iTotal = oProg.getInt("total");
           }
-        
+        // status
+        logger.debug("statusxl [working] total="+iTotal);
+        // Prepare our reply
         objContent.put("total", iTotal);       // Total number of files processed
       }
       
