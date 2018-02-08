@@ -802,6 +802,10 @@ public class CrpManager {
       String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLng, sPart);
       // Construct the target file name
       String sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sFileName);
+      // If this returns nothing then try adding .gz
+      if (sOneSrcFilePart.isEmpty()) {
+        sOneSrcFilePart = FileUtil.findFileInDirectory(sCrpLngDir, sFileName + ".gz");
+      }
       
       // And the one thing that needs to be set in the project is the type
       switch (sExtType) {
@@ -1022,15 +1026,23 @@ public class CrpManager {
       }
       // And then WITHIN this path, we need to get the specified file name
       Path pFile =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileName));
-      Path pJson =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileJson));
       // Validate what gets returned
       if (pFile.toString().isEmpty() || !Files.exists(pFile)) {
-        return DataObject.errorObject("INTERNAL_ERROR", 
-                "/txt - getText: cannot find text in ["+sFileName+"]");
+        // Alternative try find .gz variant of FileName
+        pFile =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileName+".gz"));
+        if (pFile.toString().isEmpty() || !Files.exists(pFile)) {
+          return DataObject.errorObject("INTERNAL_ERROR", 
+                  "/txt - getText: cannot find text in ["+sFileName+"]");
+        }
+        // Otherwise: adapt the sExtFind string
+        sExtFind += ".gz";
       }
       // ================= DEBUG ==
       if (bDebug) this.errHandle.debug("crpManager/getText: found path: "+pFile.toString());
       // ==========================
+      
+      // Also try and find the JSON file
+      Path pJson =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileJson));
       if (!pJson.toString().isEmpty() && Files.exists(pJson)) {
         // THere is a zipped JSON file: read and unzip it
         oText = new JSONObject(FileUtil.decompressGzipString(pJson.toString()));
