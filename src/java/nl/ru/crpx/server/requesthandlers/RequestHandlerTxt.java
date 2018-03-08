@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
+import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import static nl.ru.crpx.server.requesthandlers.RequestHandler.errHandle;
@@ -40,12 +41,14 @@ public class RequestHandlerTxt extends RequestHandler {
   private static final Logger logger = Logger.getLogger(RequestHandlerTxt.class);
   // =================== Local variables =======================================
   private CrpManager crpManager;
+  private SearchManager srchManager;
 
   // =================== Initialisation of this class ==========================
   public RequestHandlerTxt(CrpPserver servlet, HttpServletRequest request, String indexName) {
     super(servlet, request, indexName);
     // Get my local access to the Crp-User list manager
     this.crpManager = servlet.getCrpManager();
+    this.srchManager = servlet.getSearchManager();
   }
   
   @Override

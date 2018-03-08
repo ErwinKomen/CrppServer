@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.search.RunTxtList;
+import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.search.SearchParameters;
 import nl.ru.crpx.search.WorkQueueXqF;
 import nl.ru.crpx.server.CrpPserver;
@@ -36,12 +37,14 @@ public class RequestHandlerTxtList extends RequestHandler {
   private static final Logger logger = Logger.getLogger(RequestHandlerTxtList.class);
   // =================== Local variables =======================================
   private CrpManager crpManager;
+  private SearchManager srchManager;
 
   // =================== Initialisation of this class ==========================
   public RequestHandlerTxtList(CrpPserver servlet, HttpServletRequest request, String indexName) {
     super(servlet, request, indexName);
     // Get my local access to the Crp-User list manager
     this.crpManager = servlet.getCrpManager();
+    this.srchManager = servlet.getSearchManager();
   }
   
   @Override
@@ -84,7 +87,8 @@ public class RequestHandlerTxtList extends RequestHandler {
       searchTxtLpar.put("dir", sDir);
       searchTxtLpar.put("ext", sExt);
       // Create a new job
-      RunTxtList oneTxtList = new RunTxtList(errHandle, null, sCurrentUserId, searchTxtLpar);
+      RunTxtList oneTxtList = new RunTxtList(errHandle, null, sCurrentUserId, 
+              this.srchManager, searchTxtLpar);
       
       // Start the job to get the textlist
       workQueue = servlet.getWorkManager().getWorkQueue(sCurrentUserId);
