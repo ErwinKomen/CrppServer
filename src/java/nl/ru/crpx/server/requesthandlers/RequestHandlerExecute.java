@@ -55,6 +55,11 @@ public class RequestHandlerExecute extends RequestHandler {
   
   @Override
   public DataObject handle() {
+    JSONObject jReq;      // The request object
+    JSONObject oOptions;  // The search options
+    String sLng = "";     // Chosen language
+    String sCrpName = ""; // Name of the CRP
+    
     try {
       // Show where we are
       debug(logger, "REQ execute");
@@ -64,6 +69,7 @@ public class RequestHandlerExecute extends RequestHandler {
       //      "crp": "V2_versie11.crpx",
       //      "dir": "OE",
       //      "dbase": "bladi.xml",
+      //      "options": {},
       //      "cache": false,
       //      "userid": "erkomen" }
       sReqArgument = getReqString(request);
@@ -74,20 +80,19 @@ public class RequestHandlerExecute extends RequestHandler {
           "The /exe request should at least have one JSON string parameter, optionally preceded by 'query='. ");
       }
       // Take apart the request object
-      JSONObject jReq;
       try {
         jReq = new JSONObject(sReqArgument);
       } catch (Exception ex) {
         return DataObject.errorObject("Argument error", 
           "Cannot interpret /exe request ["+ sReqArgument +"]");
       }
-      String sLng = (jReq.has("lng")) ? jReq.getString("lng") : "eng_hist";
+      sLng = (jReq.has("lng")) ? jReq.getString("lng") : "eng_hist";
       // Test for CRP presence
       if (!jReq.has("crp"))
         return DataObject.errorObject("Argument error", 
           "An /exe request should contain the name of the CRP to be executed");
       // Now get the CRP name safely
-      String sCrpName = jReq.getString("crp");
+      sCrpName = jReq.getString("crp");
       // Add the extension of needed
       if (!sCrpName.endsWith(".crpx")) sCrpName += ".crpx";
       // Test for userid
@@ -108,6 +113,13 @@ public class RequestHandlerExecute extends RequestHandler {
         logger.debug("Cache is not defined!!! jReq=" + jReq.toString());
       }
       
+      // Options
+      if (jReq.has("options")) {
+        oOptions = jReq.getJSONObject("options");
+      } else {
+        oOptions = null;
+      }
+      
       // User settings: connect "crp" with "lng+dir"
       crpManager.addUserSettingsCrpLng(sCurrentUserId, sCrpName, sLng, sFocus);
       // Set this CR as the most recent project
@@ -118,10 +130,12 @@ public class RequestHandlerExecute extends RequestHandler {
       oQuery.put("lng", sLng);
       oQuery.put("crp", sCrpName);
       oQuery.put("dir", sFocus);
+      if (oOptions != null) {oQuery.put("options", oOptions); }
       oQuery.put("dbase", sDbase);
       oQuery.put("userid", (jReq.has("userid")) ? jReq.getString("userid") : "");
       oQuery.put("save", sSave);  // Save date of the CRP!!
       // The 'query' consists of [lng, crp, dir, userid, save]
+      //    and possibly [options]
       String sNewQuery = oQuery.toString();
       
       // Create a job for this query; this might contain an existing query
