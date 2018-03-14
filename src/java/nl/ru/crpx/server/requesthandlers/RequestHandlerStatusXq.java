@@ -32,6 +32,7 @@ public class RequestHandlerStatusXq  extends RequestHandler {
   public DataObject handle() {
     String sCode = "";    // the "code" part
     String sResult = "";  // the "message" part
+    String sStatusJobId ="";
     
     try {
       debug(logger, "REQ statusXq");
@@ -47,15 +48,24 @@ public class RequestHandlerStatusXq  extends RequestHandler {
       String sStatusUserId = jReq.getString("userid");
       if (!jReq.has("jobid")) return DataObject.errorObject("INTERNAL_ERROR", 
                     "A status request needs to have a [jobid] specified");
-      String sStatusJobId = jReq.getString("jobid");
+      // Make sure the jobid is a string...
+      try {
+        sStatusJobId = jReq.getString("jobid");
+      } catch (Exception ex) {
+        logger.debug("The jobid must be a string");
+        return DataObject.errorObject("INTERNAL_ERROR", "The jobid must be a string");
+      }
       // Get the status for this Xq job from this user
       DataObjectMapElement objContent = new DataObjectMapElement();
       objContent.put("jobid", sStatusJobId);
       // Get a handle to the Xq job
       Job search = searchMan.searchGetJobXq(sStatusJobId);
       // Validate
-      if (search == null) return DataObject.errorObject("INTERNAL_ERROR", 
+      if (search == null) {
+        logger.debug("Cannot find job #" + sStatusJobId + " for user [" + sStatusUserId + "]");
+        return DataObject.errorObject("INTERNAL_ERROR", 
               "Cannot find job #" + sStatusJobId + " for user [" + sStatusUserId + "]");
+      }
       // TODO: check if the indicated @userid has had anything to do with this job...
       
       // Action depends on the current status of the job
