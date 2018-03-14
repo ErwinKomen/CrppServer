@@ -51,7 +51,7 @@ public class RequestHandlerStatusXq  extends RequestHandler {
                     "A status request needs to have a [jobid] specified");
       // Make sure the jobid is a string...
       try {
-        sStatusJobId = jReq.getString("jobid");
+        sStatusJobId = jReq.get("jobid").toString();
       } catch (Exception ex) {
         logger.debug("The jobid must be a string");
         return DataObject.errorObject("INTERNAL_ERROR", "The jobid must be a string");
