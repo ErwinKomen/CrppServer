@@ -986,6 +986,9 @@ public class CrpManager {
         return DataObject.errorObject("INTERNAL_ERROR", 
                 "/txt - getText: empty text name or extension type");
       }
+      
+      this.errHandle.debug("crpManager/getText ["+sLng+", "+sPart+"]");
+      
       // Get the extension type correctly
       sExtFind = CorpusResearchProject.getTextExt(sExtType);  
       sFileName = sTextName;
@@ -1017,13 +1020,21 @@ public class CrpManager {
       if (bDebug) this.errHandle.debug("crpManager/getText: before getting the path");
       // ==========================
       
+      // Get the directory where corpus files must be found
+      String sCrpLngDir = servlet.getSearchManager().getCorpusPartDir(sLng, sPart);
+      Path pRoot = Paths.get(sCrpLngDir);
+      
+      this.errHandle.debug("crpManager/getText starts at: "+sCrpLngDir);
+
+      /*
       // Get the directory from where to search
       Path pRoot = Paths.get(FileUtil.nameNormalize(sCorpusBase), sLng);
       // If [part] is specified, then we need to get a sub directory
       if (!sPart.isEmpty()) {
         // Find the first sub directory containing [sPart] under [pRoot]
         pRoot =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sPart));
-      }
+      }*/
+      
       // And then WITHIN this path, we need to get the specified file name
       Path pFile =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sFileName));
       // Validate what gets returned
