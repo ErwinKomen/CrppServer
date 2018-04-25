@@ -103,6 +103,9 @@ public class RequestHandlerTxt extends RequestHandler {
       if (jReq.has("locs")) sSentId = jReq.getString("locs");
       if (jReq.has("locw")) sConstId = jReq.getString("locw");
       
+      // Special case: strip the '.gz' from the text name
+      sTextName = sTextName.replace(".gz", "");
+      
       // Action depends on the type
       switch(sActionType) {
         case "sentences":
