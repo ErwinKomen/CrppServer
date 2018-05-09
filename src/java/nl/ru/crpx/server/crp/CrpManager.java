@@ -1151,6 +1151,9 @@ public class CrpManager {
         // Find the first sub directory containing [sPart] under [pRoot]
         pRoot =Paths.get(FileUtil.findFileInDirectory(pRoot.toString(), sPart));
       }
+      
+      errHandle.debug("crpManager/getTextList is looking in dir: " + pRoot.toString());
+      
       // Check to see if a file-list .json file already exists
       String sTextListName = (sExtType.isEmpty()) ? "textlist-all" : "textlist-" + sExtType;
       Path pJsonTextList = Paths.get(pRoot.toString(), sTextListName+".json");
@@ -1288,7 +1291,7 @@ public class CrpManager {
       // Return the back object
       return oBack;      
     } catch (Exception ex) {
-      errHandle.DoError("Could not get a list of texts", ex, CrpManager.class);
+      errHandle.DoError("crpManager.getTextList: Could not get a list of texts", ex, CrpManager.class);
       return null;
     }
   }
