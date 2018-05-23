@@ -975,7 +975,7 @@ public class CrpManager {
     String sExtFind = "";         // The actual extension we need to find
     String sFileName = "";        // The xml FILE containing the text
     String sFileJson = "";        // THe zipped json file containing the surface text
-    String sExtJsonZip = ".json.gz";
+    String sExtJsonZip = "." + sExtType + ".json.gz";
     boolean bDebug = false;       // Debugging flag
     JSONObject oText = null;      // JSON representation of what we return
     DataObjectMapElement oBack = new DataObjectMapElement();
