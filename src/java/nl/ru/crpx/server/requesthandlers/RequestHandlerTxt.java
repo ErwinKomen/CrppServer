@@ -97,6 +97,11 @@ public class RequestHandlerTxt extends RequestHandler {
       sCurrentUserId = jReq.getString("userid");
       sTextName = jReq.getString("name");
       
+      // Check on userid
+      if (sCurrentUserId.isEmpty() || sCurrentUserId.equals("erkomen")) {
+        return DataObject.errorObject("INTERNAL_ERROR", "not logged in");
+      }
+      
       // Look for optional arguments
       if (jReq.has("dir")) sDir = jReq.getString("dir");
       if (jReq.has("type")) sActionType = jReq.getString("type");
