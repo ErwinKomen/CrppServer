@@ -26,6 +26,7 @@ import javax.servlet.http.HttpServletResponse;
 import nl.ru.crpx.dataobject.DataFormat;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectPlain;
+import nl.ru.crpx.project.CrpInfo;
 import nl.ru.crpx.project.PrjTypeManager;
 import nl.ru.crpx.search.RunAny;
 import nl.ru.crpx.search.SearchManager;
@@ -139,6 +140,9 @@ public class CrpPserver extends HttpServlet  {
         errHandle.DoError("Error reading JSON config file: " +  e.getMessage());
       }
       
+      // Set the /etc/project and /etc/corpora directories
+      CrpInfo.load(config);
+    
       // Create a new search manager
       searchManager = new SearchManager(config);
 
