@@ -74,7 +74,7 @@ public class RequestHandlerTxt extends RequestHandler {
       sCurrentUserId = "";
       // Get the JSON string arguments we need to process, e.g:
       //   {  "userid": "erkomen",          - User that requests this
-      //      "lng":    "eng_hist",         - Directory within /etc/corpora
+      //      "lng":    "eng_hist",         - Directory within CrpInfo.sEtcCorpora 
       //      "dir":    "lModE",            - Optional: corpus-part to look in
       //      "ext":    "psdx",             - Extension type: 'psdx' or 'folia'
       //      "name":   "abcdefgh[.psdx]"   - Name of the text, with or without extension

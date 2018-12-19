@@ -27,6 +27,7 @@ import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
+import nl.ru.crpx.project.CrpInfo;
 import nl.ru.crpx.search.Job;
 import nl.ru.crpx.search.RunAny;
 import nl.ru.crpx.search.SearchManager;
@@ -64,8 +65,8 @@ public abstract class RequestHandler {
   String userId = "undefined user id";          // Default user id
   String sCurrentUserId = "";                   // Local copy of userid
   static String lastIP = "";                    /** IP address of last request */
-  static String sProjectBase = "/etc/project/"; // Base directory where user-spaces are stored
-  static String sCorpusBase = "/etc/corpora/";  // Base directory where corpora are stored
+  static String sProjectBase = CrpInfo.sEtcProject + "/"; // "/etc/project/"; // Base directory where user-spaces are stored
+  static String sCorpusBase = CrpInfo.sEtcCorpora + "/";  // "/etc/corpora/";  // Base directory where corpora are stored
   static List<UserFile> lUserFile = new ArrayList<>();
   /** The work queue to handle XqF jobs */
   WorkQueueXqF workQueue;

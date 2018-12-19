@@ -9,6 +9,7 @@ package nl.ru.crpx.server.crp;
 
 import java.io.File;
 import nl.ru.crpx.project.CorpusResearchProject;
+import nl.ru.crpx.project.CrpInfo;
 import nl.ru.crpx.search.SearchManager;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.requesthandlers.RequestHandler;
@@ -23,8 +24,8 @@ import nl.ru.util.FileUtil;
  */
 public class CrpUser {
   // ========================= Constants =======================================
-  static String sProjectBase = "/etc/project/"; // Base directory where user-spaces are stored
-  static String sCorpusBase = "/etc/corpora/";  // Base directory where corpora are stored
+  static String sProjectBase = CrpInfo.sEtcProject + "/"; // "/etc/project/"; // Base directory where user-spaces are stored
+  static String sCorpusBase = CrpInfo.sEtcCorpora + "/";  // "/etc/corpora/";  // Base directory where corpora are stored
   // ==================== Variables belonging to one CrpUser object ============
   CorpusResearchProject prjThis;  // The CRP to which the user has access
   String prjName;                 // The name of this CRP

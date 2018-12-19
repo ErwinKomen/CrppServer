@@ -19,6 +19,7 @@ import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
+import nl.ru.crpx.project.CrpInfo;
 import nl.ru.crpx.tools.ErrHandle;
 
 /**
@@ -30,7 +31,7 @@ import nl.ru.crpx.tools.ErrHandle;
  */
 public class UserFile {
   // ========================= Constants =======================================
-  static String sProjectBase = "/etc/project/"; // Base directory where user-spaces are stored
+  static String sProjectBase = CrpInfo.sEtcProject + "/"; // "/etc/project/"; // Base directory where user-spaces are stored
   // ================ Private variables ==============
   private ErrHandle errHandle;
   // ================ Public variables ===============

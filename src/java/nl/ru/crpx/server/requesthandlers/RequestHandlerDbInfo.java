@@ -22,6 +22,7 @@ import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CorpusResearchProject;
+import nl.ru.crpx.project.CrpInfo;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.crpx.xq.Extensions;
@@ -133,7 +134,8 @@ public class RequestHandlerDbInfo extends RequestHandler {
       CorpusResearchProject oCrpx = new CorpusResearchProject(true);
       XmlResultDbase oDbIndex = new XmlResultDbase(oCrpx, null, errHandle);
       // XmlResultPsdxIndex oDbIndex = new XmlResultPsdxIndex(oCrpx, null, errHandle);
-      String sDbFile = "/etc/project/" + sCurrentUserId + "/dbase/";
+      // String sDbFile = "/etc/project/" + sCurrentUserId + "/dbase/";
+      String sDbFile = CrpInfo.sEtcProject + "/" + sCurrentUserId + "/dbase/";
       if (!sPart.isEmpty()) {
         sDbFile += sPart + "/";
       }

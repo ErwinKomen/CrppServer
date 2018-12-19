@@ -13,6 +13,7 @@ import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectList;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
+import nl.ru.crpx.project.CrpInfo;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.util.FileUtil;
 import org.apache.log4j.Logger;
@@ -41,7 +42,8 @@ public class RequestHandlerServerInfo extends RequestHandler {
     }
     // Get the corpus information stored in a file
     String sCorpora = "";
-    File fCrpInfo = new File ("/etc/corpora/crp-info.json");
+    // File fCrpInfo = new File ("/etc/corpora/crp-info.json");
+    File fCrpInfo = new File (CrpInfo.sEtcCorpora + "/crp-info.json");
     if (fCrpInfo.exists()) sCorpora = (new FileUtil()).readFile(fCrpInfo);
     
     // Combine all of it
