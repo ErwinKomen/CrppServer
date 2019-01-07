@@ -61,6 +61,10 @@ public class RequestHandlerReset  extends RequestHandler {
       // Pass on the message that the jobs need to stop
       search.setJobStatus("interrupt");
       
+      // Clear the work queue through CRP > EXE > Interrupt
+      boolean bQstopping = searchMan.getCrp().getExe().InterruptQueries(search);
+      logger.debug("reset qstopping: " + bQstopping);
+      
       // Attempt to finish the job
       search.changeClientsWaiting(-1);
       
