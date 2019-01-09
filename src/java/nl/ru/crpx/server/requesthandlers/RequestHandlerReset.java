@@ -67,6 +67,8 @@ public class RequestHandlerReset  extends RequestHandler {
       
       // Attempt to finish the job
       search.changeClientsWaiting(-1);
+      //Make sure to cancel it
+      search.cancelJob();
       
       // Indicate what we have done
       objContent.put("action", "aborted");
