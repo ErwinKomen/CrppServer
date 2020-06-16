@@ -137,7 +137,7 @@ public class CrpUser {
         String sProjStart = (sProjectBase.endsWith("/")) ? sProjectBase :
                 sProjectBase + "/";
         sProjectPath = FileUtil.nameNormalize(sProjStart + this.userId + "/" + sProjectPath);
-        if (!sProjectPath.contains(".")) {
+        if (!sProjectPath.contains(".crpx")) {
           sProjectPath += ".crpx";
         }
       }

@@ -101,7 +101,10 @@ public abstract class RequestHandler {
       
       // See if we can get alternatives for project and corpus bases
       JSONObject oConfig = servlet.getConfig();
-      if (oConfig.has("projectBase")) sProjectBase = oConfig.getString("projectBase");
+      if (oConfig.has("projectBase")) {
+        sProjectBase = oConfig.getString("projectBase"); 
+        errHandle.debug("RequestHandler: projectBase is set to " + sProjectBase);
+      }
       if (oConfig.has("corpusBase")) sCorpusBase = oConfig.getString("corpusBase");
       if (oConfig.has("requests")) {
         JSONObject oReq = oConfig.getJSONObject("requests");
@@ -123,7 +126,7 @@ public abstract class RequestHandler {
       // Set the project path straight
       if (!sProjectPath.contains("/")) {
         sProjectPath = FileUtil.nameNormalize(sProjectBase + "/" + sUserId + "/dbase/"+ sProjectPath);
-        if (!sProjectPath.contains(".")) {
+        if (!sProjectPath.contains(".xml")) {
           sProjectPath += ".xml";
         }
       }
@@ -148,7 +151,7 @@ public abstract class RequestHandler {
       // Set the project path straight
       if (!sProjectPath.contains("/")) {
         sProjectPath = FileUtil.nameNormalize(sProjectBase + "/" + sUserId + "/" + sProjectPath);
-        if (!sProjectPath.contains(".")) {
+        if (!sProjectPath.contains(".crpx")) {
           sProjectPath += ".crpx";
         }
       }

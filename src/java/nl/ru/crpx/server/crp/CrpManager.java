@@ -98,12 +98,15 @@ public class CrpManager {
         String sProjStart = (sProjectBase.endsWith("/")) ? sProjectBase :
                 sProjectBase + "/";
         sProjectPath = FileUtil.nameNormalize(sProjStart + sUserId + "/" + sProjectPath);
-        if (!sProjectPath.contains(".")) {
+        if (!sProjectPath.contains(".crpx")) {
           sProjectPath += ".crpx";
         }
       }
       // Create a file handle to it
       File fPrj = new File(sProjectPath);
+      if (!fPrj.exists()) {
+          errHandle.debug("existsCrp: cannot find project at: " + sProjectPath);
+      }
       // Return the existence of this file
       return fPrj.exists();
     } catch (Exception ex) {
