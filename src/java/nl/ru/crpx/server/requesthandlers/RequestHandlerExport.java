@@ -11,7 +11,7 @@ import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.search.Job;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /**
  * RequestHandlerExport
@@ -22,7 +22,7 @@ import org.apache.log4j.Logger;
  */
 public class RequestHandlerExport  extends RequestHandler {
   @SuppressWarnings("hiding")
-  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class.getName());
 
   public RequestHandlerExport(CrpPserver servlet, HttpServletRequest request, String indexName) {
     super(servlet, request, indexName);
@@ -38,7 +38,7 @@ public class RequestHandlerExport  extends RequestHandler {
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen", "jobid": "141", "export": "table" }
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /export: " + sReqArgument);
+      debug(logger, "Considering request /export: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       // Get the userid and the jobid - both obligatory

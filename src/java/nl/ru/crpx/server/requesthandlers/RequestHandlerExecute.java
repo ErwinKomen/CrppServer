@@ -25,7 +25,7 @@ import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.crpx.tools.ErrHandle;
 import nl.ru.util.ByRef;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /**
  * RequestHandlerExecute
@@ -36,7 +36,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerExecute extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
   
@@ -73,7 +73,7 @@ public class RequestHandlerExecute extends RequestHandler {
       //      "cache": false,
       //      "userid": "erkomen" }
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /exe: " + sReqArgument);
+      debug(logger, "Considering request /exe: " + sReqArgument);
       // Check for empty string
       if (sReqArgument.isEmpty()) {
         return DataObject.errorObject("INTERNAL_ERROR", 
@@ -108,9 +108,9 @@ public class RequestHandlerExecute extends RequestHandler {
       // Double checking
       if (jReq.has("cache")) {
         boolean bValue = jReq.getBoolean("cache");
-        logger.debug("Cache boolean = " + bValue );
+        debug(logger, "Cache boolean = " + bValue );
       } else {
-        logger.debug("Cache is not defined!!! jReq=" + jReq.toString());
+        debug(logger, "Cache is not defined!!! jReq=" + jReq.toString());
       }
       
       // Options
@@ -149,7 +149,7 @@ public class RequestHandlerExecute extends RequestHandler {
         // Get the id of the job
         sThisJobId = search.getJobId();
         // Indicate that we are using a job from the cache
-        logger.debug("ReqHandleExe: re-using job #" + sThisJobId);
+        debug(logger, "ReqHandleExe: re-using job #" + sThisJobId);
       } else {
         // Okay, go ahead: first remove any running queries of the same user
         if (!removeRunningQueriesOfUser(sNewQuery)) return DataObject.errorObject("INTERNAL_ERROR", 
@@ -328,7 +328,7 @@ public class RequestHandlerExecute extends RequestHandler {
               // Decrease the number of clients waiting for this job to finish
               userJob.changeClientsWaiting(-1);
               // ================= Debugging ========================
-              logger.debug("Xqjob reduced clients for: " + iThisJobId);
+              debug(logger, "Xqjob reduced clients for: " + iThisJobId);
               // Make the job un-reusable
               userJob.setUnusable();
               // Since this Xq job is now being finished, its child XqF jobs should also be finished

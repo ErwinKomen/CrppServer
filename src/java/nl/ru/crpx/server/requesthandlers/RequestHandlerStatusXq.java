@@ -13,7 +13,7 @@ import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.search.Job;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /**
  * RequestHandlerStatusXq
@@ -23,7 +23,7 @@ import org.apache.log4j.Logger;
  */
 public class RequestHandlerStatusXq  extends RequestHandler {
   @SuppressWarnings("hiding")
-  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class.getName());
 
   public RequestHandlerStatusXq(CrpPserver servlet, HttpServletRequest request, String indexName) {
     super(servlet, request, indexName);
@@ -40,7 +40,7 @@ public class RequestHandlerStatusXq  extends RequestHandler {
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen", "jobid": "141" }
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /statusxq: " + sReqArgument);
+      debug(logger, "Considering request /statusxq: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       // Get the userid and the jobid - both obligatory
@@ -53,7 +53,7 @@ public class RequestHandlerStatusXq  extends RequestHandler {
       try {
         sStatusJobId = jReq.get("jobid").toString();
       } catch (Exception ex) {
-        logger.debug("The jobid must be a string");
+        debug(logger, "The jobid must be a string");
         return DataObject.errorObject("INTERNAL_ERROR", "The jobid must be a string");
       }
       // Get the status for this Xq job from this user
@@ -69,9 +69,9 @@ public class RequestHandlerStatusXq  extends RequestHandler {
         Job search = searchMan.searchGetJobXq(sStatusJobId);
         // Validate
         if (search == null) {
-          logger.debug("Cannot find job #" + sStatusJobId + " for user [" + sStatusUserId + "]");
-          logger.debug("Overview of current jobs:");
-          logger.debug( searchMan.jobList().toString(DataFormat.JSON) );
+          debug(logger, "Cannot find job #" + sStatusJobId + " for user [" + sStatusUserId + "]");
+          debug(logger, "Overview of current jobs:");
+          debug(logger, searchMan.jobList().toString(DataFormat.JSON) );
           return DataObject.errorObject("INTERNAL_ERROR", 
                 "Cannot find job #" + sStatusJobId + " for user [" + sStatusUserId + "]");
         }

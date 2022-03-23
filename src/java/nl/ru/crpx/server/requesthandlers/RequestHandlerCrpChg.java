@@ -22,7 +22,8 @@ import nl.ru.crpx.server.crp.CrpManager;
 import static nl.ru.util.StringUtil.decompressSafe;
 import nl.ru.util.json.JSONArray;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+//import java.util.logging.Logger;
+import java.util.logging.Logger;
 
 /**
  * RequestHandlerCrpChg
@@ -39,7 +40,8 @@ import org.apache.log4j.Logger;
 public class RequestHandlerCrpChg extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerCrpChg.class);
+  // private static final Logger logger = Logger.getLogger(RequestHandlerCrpChg.class.getName());
+  private static final Logger logger = Logger.getLogger(RequestHandlerCrpChg.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
 
@@ -68,7 +70,7 @@ public class RequestHandlerCrpChg extends RequestHandler {
       // Or: { "userid": "erkomen", "crp": "ParticleA.crpx", 
       //       "list": [{"key": "Goal", "id": -1, "value": ""}, {...}] }
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /crpchg: [" + sReqArgument + "]");
+      debug(logger, "Considering request /crpchg: [" + sReqArgument + "]");
       // Convert request object into JSON
       JSONObject jReq = new JSONObject(sReqArgument);
             

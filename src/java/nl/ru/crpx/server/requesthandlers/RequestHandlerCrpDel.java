@@ -21,7 +21,8 @@ import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+//import java.util.logging.Logger;
+import java.util.logging.Logger;
 
 /**
  * RequestHandlerCrpDel
@@ -35,7 +36,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerCrpDel extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerCrpDel.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerCrpDel.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
 
@@ -59,7 +60,7 @@ public class RequestHandlerCrpDel extends RequestHandler {
       //    }
       // Note: if no user is given, then we should give all users and all crp's
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /crpdel: " + sReqArgument);
+      debug(logger, "Considering request /crpdel: " + sReqArgument);
       // Convert the request object into JSON
       JSONObject jReq = new JSONObject(sReqArgument);
       

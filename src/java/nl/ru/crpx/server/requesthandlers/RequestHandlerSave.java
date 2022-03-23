@@ -5,7 +5,7 @@ import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /*
  * This software has been developed at the "Meertens Instituut"
@@ -25,7 +25,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerSave extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerSave.class);  
+  private static final Logger logger = Logger.getLogger(RequestHandlerSave.class.getName());  
 // =================== Local variables =======================================
   private CrpManager crpManager;
 

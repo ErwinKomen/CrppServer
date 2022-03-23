@@ -16,7 +16,7 @@ import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.project.CrpInfo;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.util.FileUtil;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /**
  *
@@ -24,7 +24,7 @@ import org.apache.log4j.Logger;
  */
 public class RequestHandlerServerInfo extends RequestHandler {
   @SuppressWarnings("hiding")
-  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class.getName());
 
   public RequestHandlerServerInfo(CrpPserver servlet, HttpServletRequest request, String indexName) {
     super(servlet, request, indexName);

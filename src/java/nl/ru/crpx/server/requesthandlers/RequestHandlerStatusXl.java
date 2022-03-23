@@ -12,7 +12,7 @@ import nl.ru.crpx.search.RunAny;
 import nl.ru.crpx.search.WorkManager;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /**
  * RequestHandlerStatusXl
@@ -22,7 +22,7 @@ import org.apache.log4j.Logger;
  */
 public class RequestHandlerStatusXl  extends RequestHandler {
   @SuppressWarnings("hiding")
-  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class.getName());
 
   public RequestHandlerStatusXl(CrpPserver servlet, HttpServletRequest request, String indexName) {
     super(servlet, request, indexName);
@@ -42,7 +42,7 @@ public class RequestHandlerStatusXl  extends RequestHandler {
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen", "jobid": "141" }
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /statusxl: " + sReqArgument);
+      debug(logger, "Considering request /statusxl: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       // Look for obligatory arguments
@@ -78,7 +78,7 @@ public class RequestHandlerStatusXl  extends RequestHandler {
           // Get the error message
           sResult = this.errorCollect(search);
           // status
-          logger.debug("statusxl [error] "+sResult);
+          debug(logger, "statusxl [error] "+sResult);
         } else {
           sResult = "The search has finished";
           objContent.put("searchParam", searchParam.toDataObject());
@@ -94,7 +94,7 @@ public class RequestHandlerStatusXl  extends RequestHandler {
           }
           objContent.put("total", iTotal);       // Total number of files processed
           // status
-          logger.debug("statusxl [finished] total="+iTotal);
+          debug(logger, "statusxl [finished] total="+iTotal);
         }
         // The job may be taken away
         workQueue.removeRun(search);
@@ -108,7 +108,7 @@ public class RequestHandlerStatusXl  extends RequestHandler {
             iTotal = oProg.getInt("total");
           }
         // status
-        logger.debug("statusxl [working] total="+iTotal);
+        debug(logger, "statusxl [working] total="+iTotal);
         // Prepare our reply
         objContent.put("total", iTotal);       // Total number of files processed
       }

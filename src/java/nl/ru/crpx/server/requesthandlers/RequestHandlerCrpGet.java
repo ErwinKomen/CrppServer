@@ -10,7 +10,8 @@ import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+//import java.util.logging.Logger;
+import java.util.logging.Logger;
 
 /*
  * This software has been developed at the "Meertens Instituut"
@@ -33,7 +34,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerCrpGet extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerCrpGet.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerCrpGet.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
 
@@ -53,7 +54,7 @@ public class RequestHandlerCrpGet extends RequestHandler {
       //      "name":   "ParticleA.crpx" }
       // Note: if no user is given, then we should give all users and all crp's
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /crpget: " + sReqArgument);
+      debug(logger, "Considering request /crpget: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       if (!jReq.has("userid")) return DataObject.errorObject("syntax", 

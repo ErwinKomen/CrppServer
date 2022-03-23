@@ -24,7 +24,7 @@ import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.crpx.server.util.UserFile;
 import static nl.ru.util.StringUtil.decompressSafe;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 
 /**
@@ -45,7 +45,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerDbUpload extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerDbUpload.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerDbUpload.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
 
@@ -116,7 +116,7 @@ public class RequestHandlerDbUpload extends RequestHandler {
       if (jReq.has("lng")) sLng = jReq.getString("lng");
       if (jReq.has("dir")) sDir = jReq.getString("dir");
       
-      logger.debug("Considering request /dbupload: [userid="+sCurrentUserId+
+      debug(logger, "Considering request /dbupload: [userid="+sCurrentUserId+
               ", action="+sAction+", overwrite="+bOverwrite+
               ", name="+sDbName+", chunk="+iChunk+", total="+iTotal+"]");
      

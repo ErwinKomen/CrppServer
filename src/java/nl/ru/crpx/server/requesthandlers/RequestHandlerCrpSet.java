@@ -23,7 +23,8 @@ import nl.ru.util.FileUtil;
 import nl.ru.util.IoUtil;
 import static nl.ru.util.StringUtil.decompressSafe;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+//import java.util.logging.Logger;
+import java.util.logging.Logger;
 
 
 /**
@@ -44,7 +45,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerCrpSet extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerCrpSet.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerCrpSet.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
 
@@ -74,7 +75,7 @@ public class RequestHandlerCrpSet extends RequestHandler {
       //      "name":   "ParticleA.crpx",
       //      "overwrite": true}
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /crpset: " + sReqArgument);
+      debug(logger, "Considering request /crpset: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       if (!jReq.has("userid")) return DataObject.errorObject("syntax", 
@@ -85,9 +86,9 @@ public class RequestHandlerCrpSet extends RequestHandler {
           "The /crpset request must contain: crp.");
       sCrpText = decompressSafe(jReq.getString("crp"));
       // ======= Debugging ============
-      // logger.debug("The crp contains:");
+      // debug(logger, "The crp contains:");
       // logger.debug(sCrpText);
-      // logger.debug("================");
+      // debug(logger, "================");
       // ==============================
       
       // Possibly get overwrite parameter

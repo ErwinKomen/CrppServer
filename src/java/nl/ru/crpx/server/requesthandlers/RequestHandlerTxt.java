@@ -26,7 +26,7 @@ import nl.ru.util.json.JSONObject;
 import nl.ru.xmltools.XmlAccess;
 import nl.ru.xmltools.XmlAccessFolia;
 import nl.ru.xmltools.XmlAccessPsdx;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 
 /**
@@ -38,7 +38,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerTxt extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerTxt.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerTxt.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
   private SearchManager srchManager;
@@ -83,7 +83,7 @@ public class RequestHandlerTxt extends RequestHandler {
       //      "locw":   "fw.p.1.s.3.su.5"   - Optional. syntactic unit identifier
       //   }
       // Note: if no user is given, then we should give all users and all crp's
-      logger.debug("Considering request /txt: " + sReqArgument);
+      debug(logger, "Considering request /txt: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       // Look for obligatory arguments

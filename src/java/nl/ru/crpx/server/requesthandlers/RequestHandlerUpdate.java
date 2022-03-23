@@ -43,7 +43,7 @@ import nl.ru.xmltools.XmlAccessFolia;
 import nl.ru.xmltools.XmlAccessPsdx;
 import nl.ru.xmltools.XmlDocument;
 import nl.ru.xmltools.XmlIndexTgReader;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /**
  * RequestHandlerUpdate
@@ -72,7 +72,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerUpdate extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerUpdate.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerUpdate.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
   private Processor objSaxon;               // Local access to the processor
@@ -115,7 +115,7 @@ public class RequestHandlerUpdate extends RequestHandler {
       //   }
       // Note: if no user is given, then we should give all users and all crp's
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /update: " + sReqArgument);
+      debug(logger, "Considering request /update: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       // Validate obligatory parameters

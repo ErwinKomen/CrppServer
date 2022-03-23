@@ -12,7 +12,7 @@ import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.search.Job;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /**
  * RequestHandlerReset
@@ -22,7 +22,7 @@ import org.apache.log4j.Logger;
  */
 public class RequestHandlerReset  extends RequestHandler {
   @SuppressWarnings("hiding")
-  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class.getName());
 
   public RequestHandlerReset(CrpPserver servlet, HttpServletRequest request, String indexName) {
     super(servlet, request, indexName);
@@ -38,7 +38,7 @@ public class RequestHandlerReset  extends RequestHandler {
       // Get the JSON string argument we need to process, e.g:
       //   {  "userid": "erkomen", "jobid": "141" }
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /reset: " + sReqArgument);
+      debug(logger, "Considering request /reset: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       // Get the userid and the jobid - both obligatory
@@ -63,7 +63,7 @@ public class RequestHandlerReset  extends RequestHandler {
       
       // Clear the work queue through CRP > EXE > Interrupt
       boolean bQstopping = searchMan.getCrp().getExe().InterruptQueries(search);
-      logger.debug("reset qstopping: " + bQstopping);
+      debug(logger, "reset qstopping: " + bQstopping);
       
       // Attempt to finish the job
       search.changeClientsWaiting(-1);

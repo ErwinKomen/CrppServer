@@ -21,7 +21,8 @@ import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.util.DateUtil;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+//import java.util.logging.Logger;
+import java.util.logging.Logger;
 
 
 /**
@@ -33,7 +34,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerCrpInfo extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerCrpInfo.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerCrpInfo.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
 
@@ -54,7 +55,7 @@ public class RequestHandlerCrpInfo extends RequestHandler {
       //   {  "userid": "erkomen", "crp": "name_of_crp", "info": "modified" }
       // Note: if no user is given, then we should give all users and all crp's
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /crpinfo: " + sReqArgument);
+      debug(logger, "Considering request /crpinfo: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
                   

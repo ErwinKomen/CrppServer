@@ -4,7 +4,7 @@ import javax.servlet.http.HttpServletRequest;
 import nl.ru.crpx.dataobject.DataObject;
 import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.server.CrpPserver;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /*
  * This software has been developed at the "Meertens Instituut"
@@ -22,7 +22,7 @@ import org.apache.log4j.Logger;
  */
 public class RequestHandlerShow extends RequestHandler {
   @SuppressWarnings("hiding")
-  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class.getName());
 
   public RequestHandlerShow(CrpPserver servlet, HttpServletRequest request, String indexName) {
     super(servlet, request, indexName);

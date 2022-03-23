@@ -39,7 +39,10 @@ import nl.ru.crpx.tools.ErrHandle;
 import nl.ru.crpx.tools.General;
 import nl.ru.util.FileUtil;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+//import java.util.logging.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 
 /**
  * Base class for the web-service request-handlers that handle the different
@@ -545,7 +548,8 @@ public abstract class RequestHandler {
   }
   
   public void debug(Logger logger, String msg) {
-    logger.debug(shortUserId() + " " + msg);
+    // logger.debug(shortUserId() + " " + msg);
+    logger.log(Level.INFO, shortUserId() + " " + msg);
   }
   
   /**

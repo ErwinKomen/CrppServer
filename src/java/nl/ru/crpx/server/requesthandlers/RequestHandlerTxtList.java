@@ -22,7 +22,7 @@ import nl.ru.crpx.search.WorkQueueXqF;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 
 /**
@@ -34,7 +34,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerTxtList extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerTxtList.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerTxtList.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
   private SearchManager srchManager;
@@ -67,7 +67,7 @@ public class RequestHandlerTxtList extends RequestHandler {
       //      "ext":    "psdx"
       //   }
       // Note: if no user is given, then we should give all users and all crp's
-      logger.debug("Considering request /txtlist: " + sReqArgument);
+      debug(logger, "Considering request /txtlist: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       // Look for obligatory arguments

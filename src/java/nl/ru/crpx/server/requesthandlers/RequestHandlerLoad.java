@@ -6,7 +6,7 @@ import nl.ru.crpx.dataobject.DataObjectMapElement;
 import nl.ru.crpx.server.CrpPserver;
 import nl.ru.crpx.server.crp.CrpManager;
 import nl.ru.util.json.JSONObject;
-import org.apache.log4j.Logger;
+import java.util.logging.Logger;
 
 /*
  * This software has been developed at the "Meertens Instituut"
@@ -26,7 +26,7 @@ import org.apache.log4j.Logger;
 public class RequestHandlerLoad extends RequestHandler {
   @SuppressWarnings("hiding")
   // =================== Static variables =======================================
-  private static final Logger logger = Logger.getLogger(RequestHandlerLoad.class);
+  private static final Logger logger = Logger.getLogger(RequestHandlerLoad.class.getName());
   // =================== Local variables =======================================
   private CrpManager crpManager;
 
@@ -46,7 +46,7 @@ public class RequestHandlerLoad extends RequestHandler {
       //   {  "crp": "V2_versie11.crpx",
       //      "userid": "erkomen" }
       sReqArgument = getReqString(request);
-      logger.debug("Considering request /load: " + sReqArgument);
+      debug(logger, "Considering request /load: " + sReqArgument);
       // Take apart the request object
       JSONObject jReq = new JSONObject(sReqArgument);
       String sCrpName = (jReq.has("crp")) ? jReq.getString("crp") : "";
